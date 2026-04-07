@@ -1,4 +1,4 @@
-export type Broker = 'binance'
+export type Broker = 'binance' | 'tradovate'
 
 export interface User {
   id: string
@@ -15,9 +15,14 @@ export interface BrokerConnection {
   id: string
   user_id: string
   broker: Broker
-  api_key: string
-  api_secret: string // stored encrypted
+  api_key: string | null
+  api_secret: string | null
+  access_token: string | null
+  refresh_token: string | null
+  token_expires_at: string | null
+  tradovate_account_id: number | null
   paper_trading: boolean
+  last_synced_at: string | null
   created_at: string
 }
 
