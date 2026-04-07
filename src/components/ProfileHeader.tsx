@@ -1,8 +1,9 @@
 'use client'
 
 import { User, ProfileStats } from '@/types'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { formatCurrency, formatJoinDate, formatProfitFactor } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
 
 interface ProfileHeaderProps {
   user: User
@@ -11,10 +12,25 @@ interface ProfileHeaderProps {
   isFollowing: boolean
 }
 
+function CameraIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z" />
+    </svg>
+  )
+}
+
 export default function ProfileHeader({ user, stats, isOwn, isFollowing }: ProfileHeaderProps) {
   const [following, setFollowing] = useState(isFollowing)
   const [followerCount, setFollowerCount] = useState(stats.followers_count)
   const [pnlVisible, setPnlVisible] = useState(user.pnl_visible)
+  const [avatarUrl, setAvatarUrl] = useState(user.avatar_url)
+  const [coverUrl, setCoverUrl] = useState(user.cover_url)
+  const [uploading, setUploading] = useState<'avatar' | 'cover' | null>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const coverInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
 
   async function toggleFollow() {
     const method = following ? 'DELETE' : 'POST'
@@ -39,20 +55,109 @@ export default function ProfileHeader({ user, stats, isOwn, isFollowing }: Profi
     })
   }
 
+  async function handleImageUpload(file: File, type: 'avatar' | 'cover') {
+    setUploading(type)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('type', type)
+
+      const res = await fetch('/api/users/me/avatar', { method: 'POST', body: formData })
+      if (res.ok) {
+        const { url } = await res.json()
+        if (type === 'avatar') setAvatarUrl(url)
+        else setCoverUrl(url)
+        router.refresh()
+      }
+    } finally {
+      setUploading(null)
+    }
+  }
+
+  function onFileSelect(e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'cover') {
+    const file = e.target.files?.[0]
+    if (file) handleImageUpload(file, type)
+    e.target.value = ''
+  }
+
   const winRate = stats.total_trades > 0
     ? Math.round((stats.winning_trades / stats.total_trades) * 100)
     : 0
 
   return (
     <div className="bg-white border-b border-gray-200 pb-4">
-      {/* Cover gradient */}
-      <div className="h-24 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+      {/* Cover image */}
+      <div className="relative h-24 group">
+        {coverUrl ? (
+          <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+        )}
+        {isOwn && (
+          <>
+            <button
+              onClick={() => coverInputRef.current?.click()}
+              disabled={uploading === 'cover'}
+              className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors cursor-pointer"
+            >
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-2">
+                {uploading === 'cover' ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <CameraIcon className="w-5 h-5 text-white" />
+                )}
+              </div>
+            </button>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => onFileSelect(e, 'cover')}
+            />
+          </>
+        )}
+      </div>
 
       <div className="px-4">
         {/* Avatar + follow button */}
         <div className="flex justify-between items-end -mt-8 mb-3">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-2xl border-4 border-white">
-            {(user.display_name ?? user.username)[0].toUpperCase()}
+          <div className="relative group/avatar">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={user.display_name ?? user.username}
+                className="w-20 h-20 rounded-full object-cover border-4 border-white"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-2xl border-4 border-white">
+                {(user.display_name ?? user.username)[0].toUpperCase()}
+              </div>
+            )}
+            {isOwn && (
+              <>
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={uploading === 'avatar'}
+                  className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 group-hover/avatar:bg-black/30 transition-colors cursor-pointer"
+                >
+                  <div className="opacity-0 group-hover/avatar:opacity-100 transition-opacity bg-black/50 rounded-full p-1.5">
+                    {uploading === 'avatar' ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <CameraIcon className="w-4 h-4 text-white" />
+                    )}
+                  </div>
+                </button>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => onFileSelect(e, 'avatar')}
+                />
+              </>
+            )}
           </div>
           {!isOwn && (
             <button

@@ -14,6 +14,82 @@ interface BrokerConnection {
 
 type BrokerType = 'binance' | 'tradovate' | 'bybit' | 'kraken' | 'okx' | 'alpaca' | 'oanda' | 'coinbase' | null
 
+function BrokerLogo({ broker, size = 40 }: { broker: string; size?: number }) {
+  const s = size
+  switch (broker) {
+    case 'binance':
+      return (
+        <svg width={s} height={s} viewBox="0 0 40 40" fill="none">
+          <rect width="40" height="40" rx="20" fill="#F3BA2F" />
+          <path d="M20 10l3.09 3.09-5.45 5.46-3.1-3.1L20 10zm6.36 6.36l3.1 3.1-3.1 3.09-3.09-3.1 3.09-3.09zM10.55 16.36l3.09-3.09 3.09 3.1-3.09 3.08-3.09-3.09zM20 22.73l3.09 3.09L20 28.9l-3.09-3.09L20 22.73zm0-5.46l2.73 2.73L20 22.73l-2.73-2.73L20 17.27z" fill="white" />
+        </svg>
+      )
+    case 'bybit':
+      return (
+        <svg width={s} height={s} viewBox="0 0 40 40" fill="none">
+          <rect width="40" height="40" rx="20" fill="#F7A600" />
+          <path d="M11 13h5.5c2.5 0 4 1.2 4 3.2 0 1.4-.8 2.4-2 2.8v.1c1.5.3 2.5 1.5 2.5 3.1 0 2.2-1.7 3.5-4.3 3.5H11V13zm5 5c1.2 0 1.8-.6 1.8-1.5S17.2 15 16 15h-2.5v3h2.5zm.3 5.5c1.3 0 2-.6 2-1.6s-.7-1.6-2-1.6H13.5v3.2h2.8zM23 24.5l1.5-2.2c1 .8 2.2 1.2 3.3 1.2 1.2 0 1.7-.4 1.7-1s-.5-.9-2-1.2c-2.2-.5-3.5-1.2-3.5-3.1 0-1.9 1.5-3.2 3.8-3.2 1.5 0 2.8.5 3.8 1.3L30.2 18c-.8-.6-1.8-1-2.7-1-.9 0-1.4.4-1.4.9s.5.8 2.1 1.2c2.2.5 3.4 1.3 3.4 3.1 0 2-1.5 3.3-4 3.3-1.6 0-3.2-.5-4.3-1.5l-.3.5z" fill="white" />
+        </svg>
+      )
+    case 'kraken':
+      return (
+        <svg width={s} height={s} viewBox="0 0 40 40" fill="none">
+          <rect width="40" height="40" rx="20" fill="#5741D9" />
+          <path d="M20 9c-6.1 0-11 4.9-11 11s4.9 11 11 11 11-4.9 11-11S26.1 9 20 9zm0 18.5c-4.1 0-7.5-3.4-7.5-7.5s3.4-7.5 7.5-7.5 7.5 3.4 7.5 7.5-3.4 7.5-7.5 7.5zm0-12a4.5 4.5 0 100 9 4.5 4.5 0 000-9z" fill="white" />
+        </svg>
+      )
+    case 'okx':
+      return (
+        <svg width={s} height={s} viewBox="0 0 40 40" fill="none">
+          <rect width="40" height="40" rx="20" fill="#121212" />
+          <rect x="10" y="10" width="6" height="6" rx="1" fill="white" />
+          <rect x="17" y="10" width="6" height="6" rx="1" fill="white" />
+          <rect x="24" y="10" width="6" height="6" rx="1" fill="white" />
+          <rect x="10" y="17" width="6" height="6" rx="1" fill="white" />
+          <rect x="24" y="17" width="6" height="6" rx="1" fill="white" />
+          <rect x="10" y="24" width="6" height="6" rx="1" fill="white" />
+          <rect x="17" y="24" width="6" height="6" rx="1" fill="white" />
+          <rect x="24" y="24" width="6" height="6" rx="1" fill="white" />
+        </svg>
+      )
+    case 'coinbase':
+      return (
+        <svg width={s} height={s} viewBox="0 0 40 40" fill="none">
+          <rect width="40" height="40" rx="20" fill="#0052FF" />
+          <path d="M20 8a12 12 0 100 24 12 12 0 000-24zm-2.4 15.6a5.1 5.1 0 010-7.2l1.4 1.4a3 3 0 000 4.4l-1.4 1.4zm4.8 0l-1.4-1.4a3 3 0 000-4.4l1.4-1.4a5.1 5.1 0 010 7.2z" fill="white" />
+        </svg>
+      )
+    case 'alpaca':
+      return (
+        <svg width={s} height={s} viewBox="0 0 40 40" fill="none">
+          <rect width="40" height="40" rx="20" fill="#FCD535" />
+          <path d="M13 28v-8l3-6h8l3 6v8h-4v-5h-6v5h-4zm5-10a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm4 0a1.5 1.5 0 100 3 1.5 1.5 0 000-3z" fill="#1A1A2E" />
+        </svg>
+      )
+    case 'tradovate':
+      return (
+        <svg width={s} height={s} viewBox="0 0 40 40" fill="none">
+          <rect width="40" height="40" rx="20" fill="#0EA5E9" />
+          <path d="M10 14h20v3H22v13h-4V17h-8v-3z" fill="white" />
+        </svg>
+      )
+    case 'oanda':
+      return (
+        <svg width={s} height={s} viewBox="0 0 40 40" fill="none">
+          <rect width="40" height="40" rx="20" fill="#1B2A4A" />
+          <circle cx="20" cy="20" r="8" stroke="white" strokeWidth="2.5" fill="none" />
+          <circle cx="20" cy="20" r="3" fill="white" />
+        </svg>
+      )
+    default:
+      return (
+        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-xs text-gray-700">
+          ?
+        </div>
+      )
+  }
+}
+
 const BROKERS = [
   { id: 'binance' as const, name: 'Binance', category: 'Crypto', color: 'bg-yellow-100 text-yellow-700', letter: 'B' },
   { id: 'bybit' as const, name: 'Bybit', category: 'Crypto', color: 'bg-orange-100 text-orange-700', letter: 'By' },
@@ -470,9 +546,7 @@ export default function ConnectBrokerPage() {
                 return (
                   <div key={conn.id} className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${info?.color ?? 'bg-gray-100 text-gray-700'}`}>
-                        {info?.letter ?? '?'}
-                      </div>
+                      <BrokerLogo broker={conn.broker} />
                       <div>
                         <p className="font-semibold text-gray-900">{info?.name ?? conn.broker}</p>
                         {conn.api_key && <p className="text-gray-400 text-xs font-mono">{conn.api_key}</p>}
@@ -514,9 +588,7 @@ export default function ConnectBrokerPage() {
                           onClick={() => { setSelectedBroker(broker.id); setStatus('idle'); setMessage(''); resetForm() }}
                           className="flex flex-col items-center gap-1.5 px-4 py-3 border-2 border-gray-200 rounded-2xl hover:border-indigo-400 transition-colors"
                         >
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${broker.color}`}>
-                            {broker.letter}
-                          </div>
+                          <BrokerLogo broker={broker.id} />
                           <span className="font-semibold text-gray-900 text-sm">{broker.name}</span>
                         </button>
                       ))}

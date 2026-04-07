@@ -8,6 +8,7 @@ export interface User {
   location: string | null
   pnl_visible: boolean
   avatar_url: string | null
+  cover_url: string | null
   created_at: string
 }
 
