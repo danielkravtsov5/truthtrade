@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
       id, analysis, created_at, updated_at,
       user:users(id, username, display_name, avatar_url),
       trade:trades(id, ticker, side, quantity, entry_price, exit_price, pnl, pnl_pct, opened_at, closed_at, broker),
+      media:post_media(id, type, url, body, sort_order),
       like_count:likes(count),
       comment_count:comments(count)
     `)

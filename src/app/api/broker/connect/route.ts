@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { verifyApiKey } from '@/lib/binance'
 
+export async function GET() {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data } = await supabase
+    .from('broker_connections')
+    .select('id, broker, api_key, created_at, last_synced_at')
+    .eq('user_id', user.id)
+
+  // Mask API keys
+  const connections = (data ?? []).map(c => ({
+    ...c,
+    api_key: c.api_key.slice(0, 6) + '...' + c.api_key.slice(-4),
+  }))
+
+  return NextResponse.json(connections)
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()

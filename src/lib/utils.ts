@@ -25,3 +25,13 @@ export function formatCurrency(value: number): string {
 export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ')
 }
+
+export function formatJoinDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  return `Joined ${date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+}
+
+export function formatProfitFactor(pf: number): string {
+  if (!isFinite(pf) || isNaN(pf)) return 'N/A'
+  return pf.toFixed(2)
+}

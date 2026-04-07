@@ -20,31 +20,48 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   if (!profileUser) notFound()
 
-  // Stats
+  // Trades for stats
   const { data: trades } = await supabase
     .from('trades')
     .select('pnl')
     .eq('user_id', profileUser.id)
 
-  const { count: followersCount } = await supabase
-    .from('follows')
-    .select('*', { count: 'exact', head: true })
-    .eq('following_id', profileUser.id)
+  // Counts
+  const [
+    { count: followersCount },
+    { count: followingCount },
+    { count: postsCount },
+  ] = await Promise.all([
+    supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profileUser.id),
+    supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profileUser.id),
+    supabase.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', profileUser.id),
+  ])
 
-  const { count: followingCount } = await supabase
-    .from('follows')
-    .select('*', { count: 'exact', head: true })
-    .eq('follower_id', profileUser.id)
+  // Broker name
+  const { data: brokerConn } = await supabase
+    .from('broker_connections')
+    .select('broker')
+    .eq('user_id', profileUser.id)
+    .limit(1)
+    .single()
+
+  // Compute stats
+  const grossProfit = trades?.filter(t => t.pnl > 0).reduce((s, t) => s + t.pnl, 0) ?? 0
+  const grossLoss = Math.abs(trades?.filter(t => t.pnl < 0).reduce((s, t) => s + t.pnl, 0) ?? 0)
+  const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : (grossProfit > 0 ? Infinity : 0)
 
   const stats: ProfileStats = {
     total_trades: trades?.length ?? 0,
     winning_trades: trades?.filter(t => t.pnl > 0).length ?? 0,
     win_rate: 0,
+    profit_factor: profitFactor,
     avg_pnl: trades?.length ? trades.reduce((s, t) => s + t.pnl, 0) / trades.length : 0,
     total_pnl: trades?.reduce((s, t) => s + t.pnl, 0) ?? 0,
     best_trade_pnl: trades?.length ? Math.max(...trades.map(t => t.pnl)) : 0,
+    posts_count: postsCount ?? 0,
     followers_count: followersCount ?? 0,
     following_count: followingCount ?? 0,
+    broker_name: brokerConn?.broker ?? null,
   }
   stats.win_rate = stats.total_trades > 0 ? (stats.winning_trades / stats.total_trades) * 100 : 0
 
@@ -66,7 +83,8 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     .select(`
       id, analysis, created_at, updated_at,
       trade:trades(id, ticker, side, quantity, entry_price, exit_price, pnl, pnl_pct, opened_at, closed_at, broker),
-      user:users(id, username, display_name, avatar_url)
+      user:users(id, username, display_name, avatar_url),
+      media:post_media(id, type, url, body, sort_order)
     `)
     .eq('user_id', profileUser.id)
     .order('created_at', { ascending: false })

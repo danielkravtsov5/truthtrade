@@ -1,14 +1,32 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Navbar from '@/components/Navbar'
-import { ShieldCheck, Key, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { ShieldCheck, Key, AlertCircle, CheckCircle2, Plus, Trash2 } from 'lucide-react'
+
+interface BrokerConnection {
+  id: string
+  broker: string
+  api_key: string
+  created_at: string
+  last_synced_at: string | null
+}
 
 export default function ConnectBrokerPage() {
+  const [connections, setConnections] = useState<BrokerConnection[]>([])
+  const [showForm, setShowForm] = useState(false)
   const [apiKey, setApiKey] = useState('')
   const [apiSecret, setApiSecret] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
+  const [removing, setRemoving] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/broker/connect')
+      .then(r => r.json())
+      .then(setConnections)
+      .catch(() => {})
+  }, [])
 
   async function handleConnect(e: React.FormEvent) {
     e.preventDefault()
@@ -24,13 +42,26 @@ export default function ConnectBrokerPage() {
 
     if (res.ok) {
       setStatus('success')
-      setMessage('Binance connected! Your trades will auto-post within 60 seconds.')
+      setMessage('Binance connected! Your trades will sync within 60 seconds.')
       setApiKey('')
       setApiSecret('')
+      setShowForm(false)
+      // Refresh connections
+      const updated = await fetch('/api/broker/connect').then(r => r.json())
+      setConnections(updated)
     } else {
       setStatus('error')
       setMessage(data.error ?? 'Failed to connect. Check your API keys.')
     }
+  }
+
+  async function handleRemove(broker: string) {
+    setRemoving(broker)
+    const res = await fetch('/api/broker/connect', { method: 'DELETE' })
+    if (res.ok) {
+      setConnections(c => c.filter(conn => conn.broker !== broker))
+    }
+    setRemoving(null)
   }
 
   return (
@@ -38,80 +69,136 @@ export default function ConnectBrokerPage() {
       <Navbar />
       <main className="flex-1 md:ml-64 pb-20 md:pb-0">
         <div className="max-w-lg mx-auto px-4 py-8">
-          <h1 className="font-bold text-2xl text-gray-900 mb-2">Connect Binance</h1>
-          <p className="text-gray-500 text-sm mb-8">
-            Link your Binance account to auto-post your real trades. We only need read-only access — we cannot place or cancel orders.
-          </p>
+          <h1 className="font-bold text-2xl text-gray-900 mb-6 text-center">Broker Connections</h1>
 
-          {/* Steps */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 space-y-3">
-            <p className="font-semibold text-blue-800 text-sm">How to get your API keys:</p>
-            <ol className="list-decimal list-inside space-y-1.5 text-sm text-blue-700">
-              <li>Log in to Binance → Account → API Management</li>
-              <li>Click &quot;Create API&quot; and name it &quot;TruthTrade&quot;</li>
-              <li>Enable <strong>Read Only</strong> permissions only</li>
-              <li>Disable &quot;Enable Spot &amp; Margin Trading&quot; for safety</li>
-              <li>Copy the API Key and Secret below</li>
-            </ol>
+          {/* READ ONLY banner */}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-8 flex items-start gap-3">
+            <ShieldCheck className="text-emerald-600 flex-shrink-0 mt-0.5" size={24} />
+            <div>
+              <p className="font-semibold text-emerald-800 text-sm">Read-Only Access</p>
+              <p className="text-emerald-700 text-sm mt-0.5">
+                We can only read your trades. We can <strong>never</strong> place orders or move funds. Your API keys are stored encrypted.
+              </p>
+            </div>
           </div>
 
-          <form onSubmit={handleConnect} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
-                <Key size={14} /> API Key
-              </label>
-              <input
-                type="text"
-                value={apiKey}
-                onChange={e => setApiKey(e.target.value)}
-                required
-                placeholder="Your Binance API Key"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+          {/* Connected brokers */}
+          {connections.length > 0 && (
+            <div className="space-y-3 mb-6">
+              {connections.map(conn => (
+                <div key={conn.id} className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-bold text-sm">
+                      B
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 capitalize">{conn.broker}</p>
+                      <p className="text-gray-400 text-xs font-mono">{conn.api_key}</p>
+                      <p className="text-gray-400 text-xs">
+                        Connected {new Date(conn.created_at).toLocaleDateString()}
+                        {conn.last_synced_at && ` · Last sync ${new Date(conn.last_synced_at).toLocaleString()}`}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRemove(conn.broker)}
+                    disabled={removing === conn.broker}
+                    className="text-red-400 hover:text-red-600 transition-colors p-2"
+                    title="Remove broker"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
-                <Key size={14} /> API Secret
-              </label>
-              <input
-                type="password"
-                value={apiSecret}
-                onChange={e => setApiSecret(e.target.value)}
-                required
-                placeholder="Your Binance API Secret"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+          )}
+
+          {/* Add broker button / form */}
+          {!showForm ? (
+            <div className="flex flex-col items-center">
+              <button
+                onClick={() => { setShowForm(true); setStatus('idle'); setMessage('') }}
+                className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-semibold text-sm hover:bg-indigo-700 transition-colors"
+              >
+                <Plus size={18} />
+                Add Broker
+              </button>
+              {connections.length === 0 && (
+                <p className="text-gray-400 text-sm mt-3">No brokers connected yet</p>
+              )}
             </div>
-
-            {status === 'error' && (
-              <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl p-3">
-                <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-                {message}
+          ) : (
+            <div className="bg-white border border-gray-200 rounded-2xl p-5">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="font-semibold text-gray-900">Connect Binance</h2>
+                <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-sm">
+                  Cancel
+                </button>
               </div>
-            )}
-            {status === 'success' && (
-              <div className="flex items-start gap-2 text-emerald-700 text-sm bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-                <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0" />
-                {message}
+
+              {/* Steps */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 space-y-2">
+                <p className="font-semibold text-blue-800 text-xs">How to get your API keys:</p>
+                <ol className="list-decimal list-inside space-y-1 text-xs text-blue-700">
+                  <li>Log in to Binance → Account → API Management</li>
+                  <li>Click &quot;Create API&quot; and name it &quot;TruthTrade&quot;</li>
+                  <li>Enable <strong>Read Only</strong> permissions only</li>
+                  <li>Disable &quot;Enable Spot &amp; Margin Trading&quot; for safety</li>
+                  <li>Copy the API Key and Secret below</li>
+                </ol>
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={status === 'loading'}
-              className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold text-sm hover:bg-indigo-700 disabled:opacity-60 transition-colors"
-            >
-              {status === 'loading' ? 'Verifying & connecting...' : 'Connect Binance'}
-            </button>
-          </form>
+              <form onSubmit={handleConnect} className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+                    <Key size={14} /> API Key
+                  </label>
+                  <input
+                    type="text"
+                    value={apiKey}
+                    onChange={e => setApiKey(e.target.value)}
+                    required
+                    placeholder="Your Binance API Key"
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+                    <Key size={14} /> API Secret
+                  </label>
+                  <input
+                    type="password"
+                    value={apiSecret}
+                    onChange={e => setApiSecret(e.target.value)}
+                    required
+                    placeholder="Your Binance API Secret"
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
 
-          {/* Security note */}
-          <div className="mt-6 flex items-start gap-2 text-gray-400 text-xs">
-            <ShieldCheck size={14} className="mt-0.5 flex-shrink-0" />
-            <span>
-              Your API keys are encrypted and stored securely. We use read-only permissions and can never trade on your behalf.
-            </span>
-          </div>
+                {status === 'error' && (
+                  <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl p-3">
+                    <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+                    {message}
+                  </div>
+                )}
+                {status === 'success' && (
+                  <div className="flex items-start gap-2 text-emerald-700 text-sm bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                    <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0" />
+                    {message}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={status === 'loading'}
+                  className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold text-sm hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+                >
+                  {status === 'loading' ? 'Verifying & connecting...' : 'Connect Binance'}
+                </button>
+              </form>
+            </div>
+          )}
         </div>
       </main>
     </div>

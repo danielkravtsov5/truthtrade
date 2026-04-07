@@ -5,6 +5,8 @@ export interface User {
   username: string
   display_name: string | null
   bio: string | null
+  location: string | null
+  pnl_visible: boolean
   avatar_url: string | null
   created_at: string
 }
@@ -36,6 +38,15 @@ export interface Trade {
   raw_data: Record<string, unknown>
 }
 
+export interface PostMedia {
+  id: string
+  post_id: string
+  type: 'image' | 'video' | 'text'
+  url: string | null
+  body: string | null
+  sort_order: number
+}
+
 export interface Post {
   id: string
   user_id: string
@@ -46,6 +57,7 @@ export interface Post {
   // Joined fields
   trade?: Trade
   user?: User
+  media?: PostMedia[]
   like_count?: number
   comment_count?: number
   user_has_liked?: boolean
@@ -70,9 +82,12 @@ export interface ProfileStats {
   total_trades: number
   winning_trades: number
   win_rate: number
+  profit_factor: number
   avg_pnl: number
   total_pnl: number
   best_trade_pnl: number
+  posts_count: number
   followers_count: number
   following_count: number
+  broker_name: string | null
 }

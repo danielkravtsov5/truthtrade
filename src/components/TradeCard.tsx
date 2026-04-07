@@ -5,6 +5,7 @@ import { formatDistanceToNow } from '@/lib/utils'
 import { Heart, MessageCircle, Repeat2, Share2, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
+import PostCarousel from './PostCarousel'
 
 interface TradeCardProps {
   post: Post
@@ -86,6 +87,13 @@ export default function TradeCard({ post, compact = false }: TradeCardProps) {
           </div>
         </div>
       </Link>
+
+      {/* Carousel media */}
+      {post.media && post.media.length > 0 && (
+        <div className="mb-3">
+          <PostCarousel media={post.media} />
+        </div>
+      )}
 
       {/* Analysis */}
       {post.analysis && (
