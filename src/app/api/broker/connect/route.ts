@@ -15,7 +15,7 @@ export async function GET() {
   // Mask API keys
   const connections = (data ?? []).map(c => ({
     ...c,
-    api_key: c.api_key.slice(0, 6) + '...' + c.api_key.slice(-4),
+    api_key: c.api_key ? c.api_key.slice(0, 6) + '...' + c.api_key.slice(-4) : null,
   }))
 
   return NextResponse.json(connections)

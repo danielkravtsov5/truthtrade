@@ -1,4 +1,4 @@
-export type Broker = 'binance' | 'tradovate'
+export type Broker = 'binance' | 'tradovate' | 'bybit' | 'kraken' | 'okx' | 'alpaca' | 'oanda' | 'coinbase'
 
 export interface User {
   id: string
@@ -21,6 +21,10 @@ export interface BrokerConnection {
   refresh_token: string | null
   token_expires_at: string | null
   tradovate_account_id: number | null
+  api_passphrase: string | null
+  oanda_account_id: string | null
+  coinbase_key_name: string | null
+  coinbase_private_key: string | null
   paper_trading: boolean
   last_synced_at: string | null
   created_at: string
