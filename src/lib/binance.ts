@@ -100,9 +100,25 @@ export async function verifyApiKey(apiKey: string, apiSecret: string): Promise<b
   try {
     await signedRequest(apiKey, apiSecret, '/api/v3/account')
     return true
-  } catch {
+  } catch (err) {
+    console.error('Binance verifyApiKey failed:', err)
     return false
   }
+}
+
+import type { NormalizedFill } from '@/types'
+
+/** Convert raw Binance trades into NormalizedFills for the position tracker. */
+export function normalizeFills(trades: BinanceTrade[], symbol: string): NormalizedFill[] {
+  return trades.map((t) => ({
+    fill_id: `binance_${t.id}`,
+    ticker: symbol,
+    side: t.isBuyer ? 'buy' as const : 'sell' as const,
+    quantity: parseFloat(t.qty),
+    price: parseFloat(t.price),
+    timestamp: new Date(t.time).toISOString(),
+    raw: t as unknown as Record<string, unknown>,
+  }))
 }
 
 /**

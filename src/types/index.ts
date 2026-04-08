@@ -88,6 +88,17 @@ export interface Follow {
   created_at: string
 }
 
+/** A broker-agnostic fill used by the position tracker in trade-sync. */
+export interface NormalizedFill {
+  fill_id: string        // broker-unique fill identifier
+  ticker: string
+  side: 'buy' | 'sell'
+  quantity: number
+  price: number
+  timestamp: string      // ISO 8601
+  raw: Record<string, unknown>
+}
+
 export interface ProfileStats {
   total_trades: number
   winning_trades: number

@@ -104,6 +104,27 @@ export async function verifyToken(
   }
 }
 
+import type { NormalizedFill } from '@/types'
+
+/** Convert raw OANDA transactions into NormalizedFills. */
+export function normalizeFills(transactions: OandaTransaction[]): NormalizedFill[] {
+  const fills: NormalizedFill[] = []
+  for (const tx of transactions) {
+    if (!tx.instrument || !tx.units || !tx.price) continue
+    const units = parseFloat(tx.units)
+    fills.push({
+      fill_id: `oanda_${tx.id}`,
+      ticker: tx.instrument,
+      side: units > 0 ? 'buy' : 'sell',
+      quantity: Math.abs(units),
+      price: parseFloat(tx.price),
+      timestamp: tx.time,
+      raw: tx as unknown as Record<string, unknown>,
+    })
+  }
+  return fills
+}
+
 export function matchTransactions(transactions: OandaTransaction[]) {
   // OANDA ORDER_FILL transactions with tradesClosed already contain P&L
   const closedTrades: {

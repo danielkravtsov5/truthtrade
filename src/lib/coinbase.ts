@@ -129,6 +129,21 @@ export async function verifyApiKey(
   }
 }
 
+import type { NormalizedFill } from '@/types'
+
+/** Convert raw Coinbase fills into NormalizedFills. */
+export function normalizeFills(fills: CoinbaseFill[]): NormalizedFill[] {
+  return fills.map((f) => ({
+    fill_id: `coinbase_${f.entry_id}`,
+    ticker: f.product_id,
+    side: f.side === 'BUY' ? 'buy' as const : 'sell' as const,
+    quantity: parseFloat(f.size),
+    price: parseFloat(f.price),
+    timestamp: f.trade_time,
+    raw: f as unknown as Record<string, unknown>,
+  }))
+}
+
 export function matchFills(fills: CoinbaseFill[]) {
   // Group by product
   const byProduct = new Map<string, CoinbaseFill[]>()

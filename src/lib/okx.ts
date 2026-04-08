@@ -117,6 +117,21 @@ export async function verifyApiKey(
   }
 }
 
+import type { NormalizedFill } from '@/types'
+
+/** Convert raw OKX fills into NormalizedFills. */
+export function normalizeFills(fills: OkxFill[]): NormalizedFill[] {
+  return fills.map((f) => ({
+    fill_id: `okx_${f.tradeId}`,
+    ticker: f.instId,
+    side: f.side as 'buy' | 'sell',
+    quantity: parseFloat(f.fillSz),
+    price: parseFloat(f.fillPx),
+    timestamp: new Date(Number(f.ts)).toISOString(),
+    raw: f as unknown as Record<string, unknown>,
+  }))
+}
+
 export function matchFills(fills: OkxFill[]) {
   // Group by instrument
   const byInst = new Map<string, OkxFill[]>()

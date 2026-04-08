@@ -116,6 +116,30 @@ export async function getContractName(
   return contract.name
 }
 
+import type { NormalizedFill } from '@/types'
+
+/** Convert raw Tradovate fills into NormalizedFills (async for contract name resolution). */
+export async function normalizeFills(
+  accessToken: string,
+  fills: TradovateFill[],
+  demo = false
+): Promise<NormalizedFill[]> {
+  const result: NormalizedFill[] = []
+  for (const f of fills) {
+    const ticker = await getContractName(accessToken, f.contractId, demo)
+    result.push({
+      fill_id: `tv_${f.id}`,
+      ticker,
+      side: f.action === 'Buy' ? 'buy' : 'sell',
+      quantity: f.qty,
+      price: f.price,
+      timestamp: f.timestamp,
+      raw: f as unknown as Record<string, unknown>,
+    })
+  }
+  return result
+}
+
 // --- Match fills into round-trip trades ---
 
 export interface MatchedTrade {

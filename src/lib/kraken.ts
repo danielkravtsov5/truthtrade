@@ -93,6 +93,21 @@ export async function verifyApiKey(apiKey: string, apiSecret: string): Promise<b
   }
 }
 
+import type { NormalizedFill } from '@/types'
+
+/** Convert raw Kraken trades into NormalizedFills. */
+export function normalizeFills(trades: KrakenTrade[]): NormalizedFill[] {
+  return trades.map((t) => ({
+    fill_id: `kraken_${t.ordertxid}`,
+    ticker: t.pair,
+    side: t.type as 'buy' | 'sell',
+    quantity: parseFloat(t.vol),
+    price: parseFloat(t.price),
+    timestamp: new Date(t.time * 1000).toISOString(),
+    raw: t as unknown as Record<string, unknown>,
+  }))
+}
+
 export function matchTrades(trades: KrakenTrade[]) {
   // Group by pair
   const byPair = new Map<string, KrakenTrade[]>()

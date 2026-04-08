@@ -181,7 +181,7 @@ export default function ConnectBrokerPage() {
         binance: {
           steps: [
             'Log in to Binance → Account → API Management',
-            'Click "Create API" and name it "TruthTrade"',
+            'Click "Create API" → choose <strong>System generated</strong> → name it "TruthTrade"',
             'Enable Read Only permissions only',
             'Disable "Enable Spot & Margin Trading" for safety',
             'Copy the API Key and Secret below',

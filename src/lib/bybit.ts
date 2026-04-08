@@ -99,6 +99,21 @@ export async function verifyApiKey(apiKey: string, apiSecret: string): Promise<b
   }
 }
 
+import type { NormalizedFill } from '@/types'
+
+/** Convert raw Bybit executions into NormalizedFills. */
+export function normalizeFills(execs: BybitExecution[]): NormalizedFill[] {
+  return execs.map((e) => ({
+    fill_id: `bybit_${e.execId}`,
+    ticker: e.symbol,
+    side: e.side === 'Buy' ? 'buy' as const : 'sell' as const,
+    quantity: parseFloat(e.execQty),
+    price: parseFloat(e.execPrice),
+    timestamp: new Date(Number(e.execTime)).toISOString(),
+    raw: e as unknown as Record<string, unknown>,
+  }))
+}
+
 export function matchExecutions(execs: BybitExecution[]) {
   const sorted = [...execs].sort(
     (a, b) => Number(a.execTime) - Number(b.execTime)

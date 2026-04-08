@@ -93,6 +93,21 @@ export async function verifyApiKey(
   }
 }
 
+import type { NormalizedFill } from '@/types'
+
+/** Convert raw Alpaca fills into NormalizedFills. */
+export function normalizeFills(fills: AlpacaActivity[]): NormalizedFill[] {
+  return fills.map((f) => ({
+    fill_id: `alpaca_${f.id}`,
+    ticker: f.symbol,
+    side: f.side as 'buy' | 'sell',
+    quantity: parseFloat(f.qty),
+    price: parseFloat(f.price),
+    timestamp: f.transaction_time,
+    raw: f as unknown as Record<string, unknown>,
+  }))
+}
+
 export function matchFills(fills: AlpacaActivity[]) {
   // Group by symbol
   const bySymbol = new Map<string, AlpacaActivity[]>()
