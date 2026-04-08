@@ -88,18 +88,21 @@ export async function GET(req: NextRequest) {
     ? { binance: overrideInterval, yahoo: overrideInterval, seconds: 0 }
     : pickInterval(duration)
 
-  // When interval is overridden, ensure enough candles by widening the window
-  // e.g. 50 candles worth of the selected interval on each side
   const intervalMs: Record<string, number> = {
     '1m': 60000, '5m': 300000, '15m': 900000,
     '1h': 3600000, '4h': 14400000, '1d': 86400000,
   }
-  const minPadding = overrideInterval
-    ? (intervalMs[overrideInterval] ?? 60000) * 50
-    : Math.max(duration * 0.1, 60000)
-  const padding = Math.max(duration * 0.1, minPadding)
-  const startMs = openMs - padding
-  const endMs = closeMs + padding
+
+  const extraCandles = 6
+  const resolvedIntervalMs = overrideInterval
+    ? (intervalMs[overrideInterval] ?? 60000)
+    : (intervalMs[interval.binance] ?? intervalMs[interval.yahoo] ?? 60000)
+
+  // Show 6 candles of context before entry and 6 after exit
+  const beforePad = resolvedIntervalMs * extraCandles
+  const afterPad = resolvedIntervalMs * extraCandles
+  const startMs = openMs - beforePad
+  const endMs = closeMs + afterPad
 
   let candles: Candle[]
 
