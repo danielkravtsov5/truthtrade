@@ -29,11 +29,9 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   const [
     { count: followersCount },
     { count: followingCount },
-    { count: postsCount },
   ] = await Promise.all([
     supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profileUser.id),
     supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profileUser.id),
-    supabase.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', profileUser.id),
   ])
 
   // Broker name
@@ -57,7 +55,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     avg_pnl: trades?.length ? trades.reduce((s, t) => s + t.pnl, 0) / trades.length : 0,
     total_pnl: trades?.reduce((s, t) => s + t.pnl, 0) ?? 0,
     best_trade_pnl: trades?.length ? Math.max(...trades.map(t => t.pnl)) : 0,
-    posts_count: postsCount ?? 0,
+    posts_count: 0,
     followers_count: followersCount ?? 0,
     following_count: followingCount ?? 0,
     broker_name: brokerConn?.broker ?? null,

@@ -214,7 +214,7 @@ export default function ProfileHeader({ user, stats, isOwn, isFollowing }: Profi
 
         {/* Top panel: Posts | Followers | Following */}
         <div className="flex gap-5 mt-3 text-sm">
-          <span><strong className="text-gray-900">{stats.posts_count}</strong> <span className="text-gray-500">Posts</span></span>
+          <span><strong className="text-gray-900">{stats.total_trades}</strong> <span className="text-gray-500">Trades</span></span>
           <span><strong className="text-gray-900">{followerCount}</strong> <span className="text-gray-500">Followers</span></span>
           <span><strong className="text-gray-900">{stats.following_count}</strong> <span className="text-gray-500">Following</span></span>
         </div>
