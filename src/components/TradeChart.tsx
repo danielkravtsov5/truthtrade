@@ -50,10 +50,10 @@ export default function TradeChart({ trade }: TradeChartProps) {
         if (!candles || candles.length === 0) { setError(true); setLoading(false); return }
 
         const chart = createChart(containerRef.current, {
-          width: containerRef.current.clientWidth,
+          autoSize: true,
           height: 220,
           layout: {
-            background: { type: ColorType.Solid, color: 'transparent' },
+            background: { type: ColorType.Solid, color: '#ffffff' },
             textColor: '#9ca3af',
             fontSize: 11,
           },
@@ -137,20 +137,12 @@ export default function TradeChart({ trade }: TradeChartProps) {
         chart.timeScale().fitContent()
         setLoading(false)
 
-        // Resize handler
-        const ro = new ResizeObserver(entries => {
-          for (const entry of entries) {
-            chart.applyOptions({ width: entry.contentRect.width })
-          }
-        })
-        ro.observe(containerRef.current!)
-
         return () => {
-          ro.disconnect()
           chart.remove()
           chartRef.current = null
         }
-      } catch {
+      } catch (err) {
+        console.error('[TradeChart] Error loading chart:', err)
         if (!cancelled) { setError(true); setLoading(false) }
       }
     }
