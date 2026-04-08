@@ -93,16 +93,14 @@ export async function GET(req: NextRequest) {
     '1h': 3600000, '4h': 14400000, '1d': 86400000,
   }
 
-  const extraCandles = 6
+  const extraCandles = 25
   const resolvedIntervalMs = overrideInterval
     ? (intervalMs[overrideInterval] ?? 60000)
     : (intervalMs[interval.binance] ?? intervalMs[interval.yahoo] ?? 60000)
 
-  // Show 6 candles of context before entry and 6 after exit
-  const beforePad = resolvedIntervalMs * extraCandles
-  const afterPad = resolvedIntervalMs * extraCandles
-  const startMs = openMs - beforePad
-  const endMs = closeMs + afterPad
+  const startMs = openMs - resolvedIntervalMs * extraCandles
+  // Cap to now — future candles don't exist yet
+  const endMs = Math.min(closeMs + resolvedIntervalMs * extraCandles, Date.now())
 
   let candles: Candle[]
 
