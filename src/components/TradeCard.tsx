@@ -4,8 +4,11 @@ import { Post } from '@/types'
 import { formatDistanceToNow } from '@/lib/utils'
 import { Heart, MessageCircle, Repeat2, Share2, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { useState } from 'react'
 import PostCarousel from './PostCarousel'
+
+const TradeChart = dynamic(() => import('./TradeChart'), { ssr: false })
 
 interface TradeCardProps {
   post: Post
@@ -87,6 +90,11 @@ export default function TradeCard({ post, compact = false }: TradeCardProps) {
           </div>
         </div>
       </Link>
+
+      {/* Price chart with entry/exit markers */}
+      <div className="mb-3">
+        <TradeChart trade={trade} />
+      </div>
 
       {/* Carousel media */}
       {post.media && post.media.length > 0 && (
