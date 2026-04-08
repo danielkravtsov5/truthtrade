@@ -5,6 +5,7 @@ import {
   getFuturesTradesForSymbol,
   normalizeFills as normalizeBinanceFills,
   normalizeFuturesFills as normalizeBinanceFuturesFills,
+  verifyApiKey as verifyBinanceKey,
   DEFAULT_SYMBOLS,
 } from './binance'
 import {
@@ -193,7 +194,7 @@ async function processFills(
             : (avgEntry - avgExit) * quantity
           const pnlPct = (pnl / (avgEntry * quantity)) * 100
 
-          const brokerTradeId = `pos_${broker}_${userId}_${ticker}_${openedAt}`
+          const brokerTradeId = `pos_${broker}_${userId}_${ticker}_${openedAt}_${fill.timestamp}`
 
           const { data: insertedTrade, error: tradeError } = await supabase
             .from('trades')
@@ -306,8 +307,21 @@ const FUTURES_SYMBOLS = [
   'ARBUSDT', 'OPUSDT', 'APTUSDT', 'SUIUSDT', 'PEPEUSDT',
 ]
 
+// Permission/auth errors that mean we should stop trying
+const FATAL_ERRORS = ['-2015', '-2014', '-1022', 'Invalid API-key']
+
+function isFatalError(msg: string): boolean {
+  return FATAL_ERRORS.some(code => msg.includes(code))
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function syncBinanceTrades(conn: any): Promise<number> {
+  // Verify API key is valid before polling all symbols
+  const { valid, error: keyError } = await verifyBinanceKey(conn.api_key, conn.api_secret)
+  if (!valid) {
+    throw new Error(`Binance API key invalid: ${keyError}`)
+  }
+
   // Look back 10 minutes from last sync to avoid missing trades
   const startTime = conn.last_synced_at
     ? new Date(conn.last_synced_at).getTime() - 10 * 60_000
@@ -325,13 +339,20 @@ async function syncBinanceTrades(conn: any): Promise<number> {
       const fills = normalizeBinanceFills(rawTrades, symbol)
       closedCount += await processFills(conn.user_id, 'binance', fills)
     } catch (err: unknown) {
-      if (err instanceof Error && err.message.includes('-1121')) continue
-      console.error(`Error syncing spot ${symbol} for user ${conn.user_id}:`, err)
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('-1121')) continue // Invalid symbol — skip
+      if (isFatalError(msg)) {
+        // API key broken — throw to prevent last_synced_at update
+        throw new Error(`Binance spot auth failed: ${msg}`)
+      }
+      console.error(`Error syncing spot ${symbol} for user ${conn.user_id}: ${msg}`)
     }
   }
 
-  // USDT-M Futures trades
+  // USDT-M Futures trades — skip gracefully if no futures permission
+  let futuresPermissionError = false
   for (const symbol of FUTURES_SYMBOLS) {
+    if (futuresPermissionError) break
     try {
       const rawTrades = await getFuturesTradesForSymbol(
         conn.api_key, conn.api_secret, symbol, startTime
@@ -341,9 +362,14 @@ async function syncBinanceTrades(conn: any): Promise<number> {
       closedCount += await processFills(conn.user_id, 'binance', fills)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
-      if (msg.includes('-1121')) continue
-      console.error(`Error syncing futures ${symbol}: ${msg}`)
-      break // Stop polling more symbols if API key lacks futures permission
+      if (msg.includes('-1121')) continue // Invalid symbol — skip
+      if (isFatalError(msg)) {
+        // No futures permission — stop futures but don't fail the whole sync
+        console.error(`Binance futures permission denied for user ${conn.user_id}, skipping futures`)
+        futuresPermissionError = true
+        continue
+      }
+      console.error(`Error syncing futures ${symbol} for user ${conn.user_id}: ${msg}`)
     }
   }
 
