@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { verifyCredentials } from '@/lib/tradovate'
 
-export const preferredRegion = 'lhr1'
+export const preferredRegion = 'sin1'
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient()

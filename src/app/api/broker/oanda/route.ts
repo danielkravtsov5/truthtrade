@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { verifyToken } from '@/lib/oanda'
 
-export const preferredRegion = 'lhr1'
+export const preferredRegion = 'sin1'
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient()
