@@ -2,12 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Compass, User, TrendingUp } from 'lucide-react'
+import { Home, Compass, User, TrendingUp, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function Navbar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [username, setUsername] = useState<string | null>(null)
 
   useEffect(() => {
@@ -56,7 +58,23 @@ export default function Navbar() {
             </Link>
           ))}
         </div>
-        {!username && (
+        {username ? (
+          <div className="mt-auto">
+            <button
+              onClick={async () => {
+                const supabase = createClient()
+                await supabase.auth.signOut()
+                setUsername(null)
+                router.push('/login')
+                router.refresh()
+              }}
+              className="flex items-center gap-3 px-3 py-3 rounded-xl font-medium text-sm text-gray-600 hover:bg-gray-100 w-full transition-colors"
+            >
+              <LogOut size={20} />
+              Log out
+            </button>
+          </div>
+        ) : (
           <div className="mt-auto space-y-2">
             <Link href="/login" className="block w-full text-center py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">
               Log in
@@ -82,6 +100,21 @@ export default function Navbar() {
             {label}
           </Link>
         ))}
+        {username && (
+          <button
+            onClick={async () => {
+              const supabase = createClient()
+              await supabase.auth.signOut()
+              setUsername(null)
+              router.push('/login')
+              router.refresh()
+            }}
+            className="flex flex-col items-center gap-0.5 px-4 py-1 text-xs font-medium text-gray-500 transition-colors"
+          >
+            <LogOut size={22} />
+            Log out
+          </button>
+        )}
       </nav>
     </>
   )
