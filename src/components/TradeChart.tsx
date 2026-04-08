@@ -42,6 +42,9 @@ export default function TradeChart({ trade }: TradeChartProps) {
   useEffect(() => {
     if (!containerRef.current) return
 
+    setLoading(true)
+    setError(false)
+
     let cancelled = false
 
     async function loadChart() {
@@ -170,8 +173,6 @@ export default function TradeChart({ trade }: TradeChartProps) {
     }
   }, [trade, interval])
 
-  if (error) return null // Silently hide chart if candle data unavailable
-
   return (
     <div className="relative rounded-xl overflow-hidden border border-gray-100 bg-white">
       {loading && (
@@ -194,7 +195,13 @@ export default function TradeChart({ trade }: TradeChartProps) {
           </button>
         ))}
       </div>
-      <div ref={containerRef} className="w-full" style={{ minHeight: 220 }} />
+      {error && !loading ? (
+        <div className="flex items-center justify-center text-gray-400 text-xs py-8">
+          No chart data for this timeframe
+        </div>
+      ) : (
+        <div ref={containerRef} className="w-full" style={{ minHeight: 220 }} />
+      )}
     </div>
   )
 }

@@ -83,15 +83,23 @@ export async function GET(req: NextRequest) {
   const closeMs = new Date(closedAt).getTime()
   const duration = closeMs - openMs
 
-  // Add 10% padding on each side for context
-  const padding = Math.max(duration * 0.1, 60000)
-  const startMs = openMs - padding
-  const endMs = closeMs + padding
-
   const overrideInterval = searchParams.get('interval')
   const interval = overrideInterval
     ? { binance: overrideInterval, yahoo: overrideInterval, seconds: 0 }
     : pickInterval(duration)
+
+  // When interval is overridden, ensure enough candles by widening the window
+  // e.g. 50 candles worth of the selected interval on each side
+  const intervalMs: Record<string, number> = {
+    '1m': 60000, '5m': 300000, '15m': 900000,
+    '1h': 3600000, '4h': 14400000, '1d': 86400000,
+  }
+  const minPadding = overrideInterval
+    ? (intervalMs[overrideInterval] ?? 60000) * 50
+    : Math.max(duration * 0.1, 60000)
+  const padding = Math.max(duration * 0.1, minPadding)
+  const startMs = openMs - padding
+  const endMs = closeMs + padding
 
   let candles: Candle[]
 
