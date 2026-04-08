@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 export async function GET(req: NextRequest) {
+  try {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -44,6 +45,7 @@ export async function GET(req: NextRequest) {
   const { data: posts, error } = await query
 
   if (error) {
+    console.error('Feed query error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
@@ -67,4 +69,8 @@ export async function GET(req: NextRequest) {
     : null
 
   return NextResponse.json({ posts, nextCursor })
+  } catch (err) {
+    console.error('Feed unhandled error:', err)
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
 }
