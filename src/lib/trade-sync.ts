@@ -308,8 +308,9 @@ const FUTURES_SYMBOLS = [
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function syncBinanceTrades(conn: any): Promise<number> {
+  // Look back 10 minutes from last sync to avoid missing trades
   const startTime = conn.last_synced_at
-    ? new Date(conn.last_synced_at).getTime() - 60_000
+    ? new Date(conn.last_synced_at).getTime() - 10 * 60_000
     : Date.now() - 24 * 60 * 60 * 1000
 
   let closedCount = 0
@@ -387,7 +388,7 @@ async function syncTradovateTrades(conn: any): Promise<number> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function syncBybitTrades(conn: any): Promise<number> {
   const startTime = conn.last_synced_at
-    ? new Date(conn.last_synced_at).getTime() - 60_000
+    ? new Date(conn.last_synced_at).getTime() - 10 * 60_000
     : undefined
 
   try {
@@ -425,7 +426,7 @@ async function syncKrakenTrades(conn: any): Promise<number> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function syncOkxTrades(conn: any): Promise<number> {
   const startTime = conn.last_synced_at
-    ? new Date(conn.last_synced_at).getTime() - 60_000
+    ? new Date(conn.last_synced_at).getTime() - 10 * 60_000
     : undefined
 
   try {
@@ -447,7 +448,7 @@ async function syncOkxTrades(conn: any): Promise<number> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function syncAlpacaTrades(conn: any): Promise<number> {
   const after = conn.last_synced_at
-    ? new Date(new Date(conn.last_synced_at).getTime() - 60_000).toISOString()
+    ? new Date(new Date(conn.last_synced_at).getTime() - 10 * 60_000).toISOString()
     : undefined
 
   try {
@@ -470,7 +471,7 @@ async function syncOandaTrades(conn: any): Promise<number> {
   if (!conn.access_token || !conn.oanda_account_id) return 0
 
   const from = conn.last_synced_at
-    ? new Date(new Date(conn.last_synced_at).getTime() - 60_000).toISOString()
+    ? new Date(new Date(conn.last_synced_at).getTime() - 10 * 60_000).toISOString()
     : undefined
 
   try {
@@ -493,7 +494,7 @@ async function syncCoinbaseTrades(conn: any): Promise<number> {
   if (!conn.coinbase_key_name || !conn.coinbase_private_key) return 0
 
   const startDate = conn.last_synced_at
-    ? new Date(new Date(conn.last_synced_at).getTime() - 60_000).toISOString()
+    ? new Date(new Date(conn.last_synced_at).getTime() - 10 * 60_000).toISOString()
     : undefined
 
   try {
