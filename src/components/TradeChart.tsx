@@ -23,11 +23,21 @@ interface Candle {
   close: number
 }
 
+const TIMEFRAMES = [
+  { label: '1m', value: '1m' },
+  { label: '5m', value: '5m' },
+  { label: '15m', value: '15m' },
+  { label: '1h', value: '1h' },
+  { label: '4h', value: '4h' },
+  { label: '1d', value: '1d' },
+]
+
 export default function TradeChart({ trade }: TradeChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [interval, setInterval] = useState<string | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -40,6 +50,7 @@ export default function TradeChart({ trade }: TradeChartProps) {
         opened_at: trade.opened_at,
         closed_at: trade.closed_at,
       })
+      if (interval) params.set('interval', interval)
 
       try {
         const res = await fetch(`/api/candles?${params}`)
@@ -157,7 +168,7 @@ export default function TradeChart({ trade }: TradeChartProps) {
         chartRef.current = null
       }
     }
-  }, [trade])
+  }, [trade, interval])
 
   if (error) return null // Silently hide chart if candle data unavailable
 
@@ -168,6 +179,21 @@ export default function TradeChart({ trade }: TradeChartProps) {
           <div className="w-5 h-5 border-2 border-gray-300 border-t-indigo-500 rounded-full animate-spin" />
         </div>
       )}
+      <div className="flex items-center gap-1 px-3 pt-2">
+        {TIMEFRAMES.map(tf => (
+          <button
+            key={tf.value}
+            onClick={() => setInterval(tf.value === interval ? null : tf.value)}
+            className={`px-2 py-0.5 text-xs rounded font-medium transition-colors ${
+              tf.value === interval
+                ? 'bg-indigo-500 text-white'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            {tf.label}
+          </button>
+        ))}
+      </div>
       <div ref={containerRef} className="w-full" style={{ minHeight: 220 }} />
     </div>
   )

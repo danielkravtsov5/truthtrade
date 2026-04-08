@@ -88,7 +88,10 @@ export async function GET(req: NextRequest) {
   const startMs = openMs - padding
   const endMs = closeMs + padding
 
-  const interval = pickInterval(duration)
+  const overrideInterval = searchParams.get('interval')
+  const interval = overrideInterval
+    ? { binance: overrideInterval, yahoo: overrideInterval, seconds: 0 }
+    : pickInterval(duration)
 
   let candles: Candle[]
 
