@@ -7,20 +7,29 @@ import { createClient } from '@/lib/supabase'
 
 interface FeedProps {
   type: 'following' | 'explore'
+  userId?: string
 }
 
-export default function Feed({ type }: FeedProps) {
+export default function Feed({ type, userId }: FeedProps) {
   const [posts, setPosts] = useState<Post[]>([])
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string>()
+
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => {
+      if (data.user) setCurrentUserId(data.user.id)
+    })
+  }, [])
 
   const fetchPosts = useCallback(async (cursor?: string) => {
     const params = new URLSearchParams({ type })
     if (cursor) params.set('cursor', cursor)
+    if (userId) params.set('userId', userId)
     const res = await fetch(`/api/feed?${params}`)
     return res.json()
-  }, [type])
+  }, [type, userId])
 
   useEffect(() => {
     setLoading(true)
@@ -89,7 +98,12 @@ export default function Feed({ type }: FeedProps) {
   return (
     <div className="space-y-4">
       {posts.map(post => (
-        <TradeCard key={post.id} post={post} />
+        <TradeCard
+          key={post.id}
+          post={post}
+          currentUserId={currentUserId}
+          onDelete={(id) => setPosts(prev => prev.filter(p => p.id !== id))}
+        />
       ))}
       {nextCursor && (
         <button

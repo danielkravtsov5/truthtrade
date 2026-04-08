@@ -82,7 +82,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     .select(`
       id, analysis, created_at, updated_at,
       trade:trades(id, ticker, side, quantity, entry_price, exit_price, pnl, pnl_pct, opened_at, closed_at, broker),
-      user:users(id, username, display_name, avatar_url),
+      user:users!posts_user_id_fkey(id, username, display_name, avatar_url),
       media:post_media(id, type, url, body, sort_order)
     `)
     .eq('user_id', profileUser.id)
@@ -104,7 +104,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
       <div className="px-4 mt-4">
         <h2 className="font-semibold text-gray-900 mb-3">All trades</h2>
-        <Feed type="explore" />
+        <Feed type="explore" userId={profileUser.id} />
       </div>
     </div>
   )

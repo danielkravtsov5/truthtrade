@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const type = searchParams.get('type') ?? 'explore' // 'following' | 'explore'
   const cursor = searchParams.get('cursor')           // ISO date for pagination
+  const filterUserId = searchParams.get('userId')     // filter by specific user
   const limit = 20
 
   let query = supabase
@@ -28,7 +29,10 @@ export async function GET(req: NextRequest) {
     query = query.lt('created_at', cursor)
   }
 
-  if (type === 'following' && user) {
+  // Filter by specific user (for profile pages)
+  if (filterUserId) {
+    query = query.eq('user_id', filterUserId)
+  } else if (type === 'following' && user) {
     // Get IDs of users the current user follows
     const { data: follows } = await supabase
       .from('follows')
