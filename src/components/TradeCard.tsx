@@ -2,10 +2,10 @@
 
 import { Post } from '@/types'
 import { formatDistanceToNow } from '@/lib/utils'
-import { Heart, MessageCircle, Repeat2, Share2, CheckCircle } from 'lucide-react'
+import { Heart, MessageCircle, Repeat2, Share2, CheckCircle, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import PostCarousel from './PostCarousel'
 
 const TradeChart = dynamic(() => import('./TradeChart'), { ssr: false })
@@ -13,11 +13,28 @@ const TradeChart = dynamic(() => import('./TradeChart'), { ssr: false })
 interface TradeCardProps {
   post: Post
   compact?: boolean  // for profile grid
+  currentUserId?: string
+  onDelete?: (postId: string) => void
 }
 
-export default function TradeCard({ post, compact = false }: TradeCardProps) {
+export default function TradeCard({ post, compact = false, currentUserId, onDelete }: TradeCardProps) {
   const [liked, setLiked] = useState(post.user_has_liked ?? false)
   const [likeCount, setLikeCount] = useState(post.like_count ?? 0)
+  const [deleting, setDeleting] = useState(false)
+
+  const isAdmin = currentUserId === process.env.NEXT_PUBLIC_ADMIN_USER_ID
+
+  const handleDelete = useCallback(async () => {
+    if (!confirm('Delete this post?')) return
+    setDeleting(true)
+    const res = await fetch(`/api/posts/${post.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      onDelete?.(post.id)
+    } else {
+      alert('Failed to delete post')
+      setDeleting(false)
+    }
+  }, [post.id, onDelete])
 
   const trade = post.trade!
   const user = post.user!
@@ -61,9 +78,20 @@ export default function TradeCard({ post, compact = false }: TradeCardProps) {
           <span className="text-gray-400 text-sm ml-2">·</span>
           <span className="text-gray-400 text-sm ml-2">{formatDistanceToNow(post.created_at)}</span>
         </div>
-        <div className="flex items-center gap-1 text-emerald-500 text-xs font-medium">
-          <CheckCircle size={12} />
-          verified
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-emerald-500 text-xs font-medium">
+            <CheckCircle size={12} />
+            verified
+          </div>
+          {isAdmin && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="text-gray-300 hover:text-red-500 transition-colors"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
         </div>
       </div>
 

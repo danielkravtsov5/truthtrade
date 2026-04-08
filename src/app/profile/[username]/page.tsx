@@ -77,7 +77,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   }
 
   // Posts for the grid
-  const { data: posts } = await supabase
+  const { data: posts, error: postsError } = await supabase
     .from('posts')
     .select(`
       id, analysis, created_at, updated_at,
@@ -88,6 +88,8 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     .eq('user_id', profileUser.id)
     .order('created_at', { ascending: false })
     .limit(30)
+
+  if (postsError) console.error('Profile posts query error:', postsError)
 
   return (
     <div className="max-w-xl mx-auto">
