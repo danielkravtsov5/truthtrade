@@ -85,7 +85,13 @@ Each broker has a dedicated file in `src/lib/` that exports:
 - Transform functions to normalize into the shared `Trade` schema
 - `trade-sync.ts` orchestrates all broker syncing, called by the cron job
 
-Current brokers: Alpaca, Binance, Bybit, Coinbase, Kraken, OANDA, OKX, Tradovate
+Current brokers: Alpaca, Binance (Spot + USDT-M Futures), Bybit, Coinbase, Kraken, OANDA, OKX, Tradovate
+
+**Binance specifics:**
+- Spot trades use `/api/v3/myTrades` (via `api.binance.com`)
+- USDT-M Futures trades use `/fapi/v1/userTrades` (via `fapi.binance.com`)
+- Both Spot and Futures are synced in `syncBinanceTrades()` in `trade-sync.ts`
+- API key needs **Read** + **Futures** permissions enabled (read-only is sufficient)
 
 To add a new broker:
 1. Create `src/lib/{broker}.ts` with fetch + transform functions

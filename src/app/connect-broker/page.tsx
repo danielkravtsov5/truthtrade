@@ -198,11 +198,12 @@ export default function ConnectBrokerPage() {
           steps: [
             'Log in to Binance → Account → API Management',
             'Click "Create API" → choose <strong>System generated</strong> → name it "TruthTrade"',
-            'Enable Read Only permissions only',
+            'Enable <strong>Enable Reading</strong> permission',
+            'Enable <strong>Enable Futures</strong> if you trade futures',
             'Disable "Enable Spot & Margin Trading" for safety',
             'Copy the API Key and Secret below',
           ],
-          permission: 'Read Only',
+          permission: 'Read Only (+ Enable Futures for futures trades)',
         },
         bybit: {
           steps: [
