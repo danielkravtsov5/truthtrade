@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase'
 import { ShieldCheck, Key, AlertCircle, CheckCircle2, Trash2, User, Lock } from 'lucide-react'
 
 interface BrokerConnection {
@@ -49,6 +51,8 @@ const BROKERS = [
 ]
 
 export default function ConnectBrokerPage() {
+  const router = useRouter()
+  const [authChecked, setAuthChecked] = useState(false)
   const [connections, setConnections] = useState<BrokerConnection[]>([])
   const [selectedBroker, setSelectedBroker] = useState<BrokerType>(null)
   const [removing, setRemoving] = useState<string | null>(null)
@@ -67,11 +71,23 @@ export default function ConnectBrokerPage() {
   const [paper, setPaper] = useState(false)
 
   useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
+        router.replace('/login')
+      } else {
+        setAuthChecked(true)
+      }
+    })
+  }, [router])
+
+  useEffect(() => {
+    if (!authChecked) return
     fetch('/api/broker/connect')
       .then(r => r.json())
       .then(setConnections)
       .catch(() => {})
-  }, [])
+  }, [authChecked])
 
   function resetForm() {
     setApiKey(''); setApiSecret(''); setPassphrase('')
@@ -458,6 +474,8 @@ export default function ConnectBrokerPage() {
       </button>
     )
   }
+
+  if (!authChecked) return null
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8">

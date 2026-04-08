@@ -28,8 +28,10 @@ export default function Navbar() {
   const navItems = [
     { href: '/', icon: Home, label: 'Home' },
     { href: '/explore', icon: Compass, label: 'Explore' },
-    { href: '/connect-broker', icon: TrendingUp, label: 'Connect' },
-    ...(username ? [{ href: `/profile/${username}`, icon: User, label: 'Profile' }] : []),
+    ...(username ? [
+      { href: '/connect-broker', icon: TrendingUp, label: 'Connect' },
+      { href: `/profile/${username}`, icon: User, label: 'Profile' },
+    ] : []),
   ]
 
   return (
