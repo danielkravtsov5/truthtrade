@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Compass, User, TrendingUp, LogOut } from 'lucide-react'
+import { Home, Compass, User, TrendingUp, LogOut, LogIn } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -102,7 +102,7 @@ export default function Navbar() {
             {label}
           </Link>
         ))}
-        {username && (
+        {username ? (
           <button
             onClick={async () => {
               const supabase = createClient()
@@ -116,6 +116,16 @@ export default function Navbar() {
             <LogOut size={22} />
             Log out
           </button>
+        ) : (
+          <Link
+            href="/login"
+            className={`flex flex-col items-center gap-0.5 px-4 py-1 text-xs font-medium transition-colors ${
+              pathname === '/login' ? 'text-indigo-600' : 'text-gray-500'
+            }`}
+          >
+            <LogIn size={22} />
+            Log in
+          </Link>
         )}
       </nav>
     </>
