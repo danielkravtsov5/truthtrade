@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { syncAllUsers } from '@/lib/trade-sync'
 
+export const preferredRegion = 'lhr1'
+
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
