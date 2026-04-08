@@ -1,4 +1,5 @@
 import Feed from '@/components/Feed'
+import ExploreSearch from '@/components/ExploreSearch'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 async function getTrendingTickers() {
@@ -55,6 +56,8 @@ export default async function ExplorePage() {
   return (
     <div className="max-w-xl mx-auto px-4 py-4">
           <h1 className="font-bold text-xl text-gray-900 mb-4">Explore</h1>
+
+          <ExploreSearch />
 
           {/* Trending tickers */}
           {tickers.length > 0 && (
