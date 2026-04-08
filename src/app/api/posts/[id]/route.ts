@@ -36,12 +36,23 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   }
 
   const admin = createServiceClient()
-  const { error } = await admin
-    .from('posts')
-    .delete()
-    .eq('id', id)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // Get the linked trade so we can delete it (cascades to post)
+  const { data: post } = await admin
+    .from('posts')
+    .select('trade_id')
+    .eq('id', id)
+    .single()
+
+  if (post?.trade_id) {
+    // Deleting the trade cascades to delete the post too
+    const { error } = await admin.from('trades').delete().eq('id', post.trade_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else {
+    // No linked trade — just delete the post
+    const { error } = await admin.from('posts').delete().eq('id', id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 
   return NextResponse.json({ success: true })
 }
