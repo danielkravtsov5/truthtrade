@@ -7,7 +7,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const { data, error } = await supabase
     .from('comments')
-    .select('id, body, created_at, user:users(id, username, display_name, avatar_url)')
+    .select('id, body, created_at, user:users!comments_user_id_fkey(id, username, display_name, avatar_url)')
     .eq('post_id', id)
     .order('created_at', { ascending: true })
 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { data, error } = await supabase
     .from('comments')
     .insert({ user_id: user.id, post_id: id, body: body.trim() })
-    .select('id, body, created_at, user:users(id, username, display_name, avatar_url)')
+    .select('id, body, created_at, user:users!comments_user_id_fkey(id, username, display_name, avatar_url)')
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
