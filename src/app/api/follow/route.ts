@@ -17,6 +17,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // Create notification for the followed user
+  if (following_id !== user.id) {
+    await supabase
+      .from('notifications')
+      .insert({
+        user_id: following_id,
+        actor_id: user.id,
+        type: 'follow',
+      })
+      .select()
+      .maybeSingle() // unique index handles duplicates
+  }
+
   return NextResponse.json({ following: true })
 }
 

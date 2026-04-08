@@ -112,3 +112,52 @@ export interface ProfileStats {
   following_count: number
   broker_name: string | null
 }
+
+export type NotificationType = 'like' | 'comment' | 'follow' | 'new_trade'
+
+export interface Notification {
+  id: string
+  user_id: string
+  actor_id: string
+  type: NotificationType
+  post_id: string | null
+  read: boolean
+  created_at: string
+  actor?: User
+  post?: { id: string; trade?: { ticker: string; side: string; pnl: number } }
+}
+
+export interface LeaderboardEntry {
+  rank: number
+  user: User
+  total_trades: number
+  win_rate: number
+  total_pnl: number
+  profit_factor: number
+  avg_pnl: number
+}
+
+export interface DashboardData {
+  equity_curve: { date: string; cumulative_pnl: number }[]
+  stats: {
+    total_trades: number
+    wins: number
+    losses: number
+    win_rate: number
+    profit_factor: number
+    avg_pnl: number
+    total_pnl: number
+    best_trade: number
+    worst_trade: number
+    current_streak: number
+    streak_type: 'win' | 'loss' | null
+  }
+  by_ticker: { ticker: string; trades: number; pnl: number; win_rate: number }[]
+  by_side: {
+    long: { trades: number; pnl: number; win_rate: number }
+    short: { trades: number; pnl: number; win_rate: number }
+  }
+  calendar: { date: string; pnl: number; trades: number }[]
+  best_trades: Trade[]
+  worst_trades: Trade[]
+}

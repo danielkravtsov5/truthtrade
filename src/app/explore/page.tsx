@@ -1,4 +1,4 @@
-import Feed from '@/components/Feed'
+import FilteredFeed from '@/components/FilteredFeed'
 import ExploreSearch from '@/components/ExploreSearch'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
@@ -98,7 +98,7 @@ export default async function ExplorePage() {
           )}
 
           <h2 className="font-semibold text-gray-900 mb-3">Latest trades</h2>
-          <Feed type="explore" />
+          <FilteredFeed type="explore" />
     </div>
   )
 }

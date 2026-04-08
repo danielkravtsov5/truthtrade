@@ -159,6 +159,16 @@ async function processFills(
       processedFillIds.add(fill.fill_id)
 
       if (netQty === 0) {
+        // Before opening a new position, check if this is actually a closing
+        // fill for an already-processed position (re-fetched via lookback window).
+        // Binance Futures fills have realizedPnl — if non-zero, it's a close fill.
+        const rawPnl = (fill.raw as Record<string, string>)?.realizedPnl
+        const realizedPnl = rawPnl ? parseFloat(rawPnl) : 0
+        if (realizedPnl !== 0) {
+          // This is a closing fill for a position we already processed — skip it
+          continue
+        }
+
         // Opening a new position
         side = fill.side === 'buy' ? 'long' : 'short'
         netQty = fill.quantity
@@ -183,7 +193,6 @@ async function processFills(
 
         // Round to avoid floating point issues
         netQty = Math.round(netQty * 1e8) / 1e8
-
         if (netQty <= 0) {
           // Position closed! Create trade + post
           const avgEntry = totalEntryCost / totalEntryQty
@@ -224,12 +233,35 @@ async function processFills(
             }
           } else {
             // Create the post for this closed position
-            await supabase.from('posts').insert({
+            const { data: insertedPost } = await supabase.from('posts').insert({
               user_id: userId,
               trade_id: insertedTrade.id,
               analysis: null,
-            })
+            }).select('id').single()
             closedCount++
+
+            // Notify followers about the new trade (non-blocking)
+            try {
+              if (insertedPost) {
+                const { data: followers } = await supabase
+                  .from('follows')
+                  .select('follower_id')
+                  .eq('following_id', userId)
+
+                if (followers && followers.length > 0) {
+                  await supabase.from('notifications').insert(
+                    followers.map(f => ({
+                      user_id: f.follower_id,
+                      actor_id: userId,
+                      type: 'new_trade' as const,
+                      post_id: insertedPost.id,
+                    }))
+                  )
+                }
+              }
+            } catch (notifErr) {
+              console.error('Notification insert failed (non-fatal):', notifErr)
+            }
           }
 
           // Delete the open position row

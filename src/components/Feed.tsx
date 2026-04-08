@@ -8,9 +8,10 @@ import { createClient } from '@/lib/supabase'
 interface FeedProps {
   type: 'following' | 'explore'
   userId?: string
+  filters?: Record<string, string>
 }
 
-export default function Feed({ type, userId }: FeedProps) {
+export default function Feed({ type, userId, filters }: FeedProps) {
   const [posts, setPosts] = useState<Post[]>([])
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -23,13 +24,21 @@ export default function Feed({ type, userId }: FeedProps) {
     })
   }, [])
 
+  const filterKey = filters ? JSON.stringify(filters) : ''
+
   const fetchPosts = useCallback(async (cursor?: string) => {
     const params = new URLSearchParams({ type })
     if (cursor) params.set('cursor', cursor)
     if (userId) params.set('userId', userId)
+    // Append active filters
+    if (filters) {
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v) params.set(k, v)
+      })
+    }
     const res = await fetch(`/api/feed?${params}`)
     return res.json()
-  }, [type, userId])
+  }, [type, userId, filterKey])
 
   useEffect(() => {
     setLoading(true)

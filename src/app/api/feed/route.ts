@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { classifyTicker } from '@/lib/asset-class'
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,6 +12,61 @@ export async function GET(req: NextRequest) {
   const cursor = searchParams.get('cursor')           // ISO date for pagination
   const filterUserId = searchParams.get('userId')     // filter by specific user
   const limit = 20
+
+  // Trade-level filters
+  const ticker = searchParams.get('ticker')
+  const side = searchParams.get('side')
+  const outcome = searchParams.get('outcome')
+  const pnlMin = searchParams.get('pnlMin')
+  const pnlMax = searchParams.get('pnlMax')
+  const period = searchParams.get('period')
+  const assetClass = searchParams.get('assetClass')
+
+  // If trade-level filters are active, pre-filter trade IDs
+  const hasTradeFilters = ticker || side || outcome || pnlMin || pnlMax || period || assetClass
+  let tradeIdFilter: string[] | null = null
+
+  if (hasTradeFilters) {
+    let tq = supabase.from('trades').select('id, ticker, pnl')
+
+    if (ticker) tq = tq.eq('ticker', ticker)
+    if (side) tq = tq.eq('side', side)
+    if (outcome === 'win') tq = tq.gt('pnl', 0)
+    if (outcome === 'loss') tq = tq.lt('pnl', 0)
+    if (pnlMin) tq = tq.gte('pnl', parseFloat(pnlMin))
+    if (pnlMax) tq = tq.lte('pnl', parseFloat(pnlMax))
+
+    if (period) {
+      const now = new Date()
+      let cutoff: string
+      if (period === 'today') {
+        const start = new Date(now)
+        start.setHours(0, 0, 0, 0)
+        cutoff = start.toISOString()
+      } else if (period === 'week') {
+        cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      } else {
+        cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      }
+      tq = tq.gte('closed_at', cutoff)
+    }
+
+    const { data: filteredTrades } = await tq
+    let ids = (filteredTrades ?? []).map(t => t.id as string)
+
+    // Asset class filter is done in JS since it's based on ticker classification
+    if (assetClass && filteredTrades) {
+      const matchingIds = filteredTrades
+        .filter(t => classifyTicker(t.ticker as string) === assetClass)
+        .map(t => t.id as string)
+      ids = matchingIds
+    }
+
+    if (ids.length === 0) {
+      return NextResponse.json({ posts: [], nextCursor: null })
+    }
+    tradeIdFilter = ids
+  }
 
   let query = supabase
     .from('posts')
@@ -24,6 +80,10 @@ export async function GET(req: NextRequest) {
     `)
     .order('created_at', { ascending: false })
     .limit(limit)
+
+  if (tradeIdFilter) {
+    query = query.in('trade_id', tradeIdFilter)
+  }
 
   if (cursor) {
     query = query.lt('created_at', cursor)
