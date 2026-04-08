@@ -52,7 +52,7 @@ export default function ExploreSearch() {
   const [focused, setFocused] = useState(false)
   const [users, setUsers] = useState<UserResult[]>([])
   const [searching, setSearching] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown on outside click
