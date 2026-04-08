@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 
 const BASE_URL = 'https://api.binance.com'
+const FUTURES_URL = 'https://fapi.binance.com'
 
 // Common USDT trading pairs to poll (user can add more via settings)
 export const DEFAULT_SYMBOLS = [
@@ -19,7 +20,8 @@ async function signedRequest<T>(
   apiKey: string,
   apiSecret: string,
   endpoint: string,
-  params: Record<string, string | number> = {}
+  params: Record<string, string | number> = {},
+  baseUrl: string = BASE_URL
 ): Promise<T> {
   const timestamp = Date.now()
   const queryParams = new URLSearchParams({
@@ -29,7 +31,7 @@ async function signedRequest<T>(
   const signature = sign(queryParams.toString(), apiSecret)
   queryParams.set('signature', signature)
 
-  const res = await fetch(`${BASE_URL}${endpoint}?${queryParams}`, {
+  const res = await fetch(`${baseUrl}${endpoint}?${queryParams}`, {
     headers: { 'X-MBX-APIKEY': apiKey },
   })
 
@@ -71,7 +73,7 @@ export interface BinanceOrder {
   fills?: Array<{ price: string; qty: string }>
 }
 
-/** Fetch recent trades for a symbol since a given time */
+/** Fetch recent spot trades for a symbol since a given time */
 export async function getTradesForSymbol(
   apiKey: string,
   apiSecret: string,
@@ -81,6 +83,59 @@ export async function getTradesForSymbol(
   const params: Record<string, string | number> = { symbol, limit: 500 }
   if (startTime) params.startTime = startTime
   return signedRequest<BinanceTrade[]>(apiKey, apiSecret, '/api/v3/myTrades', params)
+}
+
+export interface BinanceFuturesTrade {
+  symbol: string
+  id: number
+  orderId: number
+  price: string
+  qty: string
+  quoteQty: string
+  commission: string
+  commissionAsset: string
+  time: number
+  buyer: boolean
+  maker: boolean
+  side: 'BUY' | 'SELL'
+  positionSide: 'LONG' | 'SHORT' | 'BOTH'
+  realizedPnl: string
+}
+
+/** Fetch recent USDT-M futures trades for a symbol */
+export async function getFuturesTradesForSymbol(
+  apiKey: string,
+  apiSecret: string,
+  symbol: string,
+  startTime?: number
+): Promise<BinanceFuturesTrade[]> {
+  const params: Record<string, string | number> = { symbol, limit: 500 }
+  if (startTime) params.startTime = startTime
+  return signedRequest<BinanceFuturesTrade[]>(apiKey, apiSecret, '/fapi/v1/userTrades', params, FUTURES_URL)
+}
+
+/** Get all open futures positions (to know which symbols to poll) */
+export async function getFuturesPositions(
+  apiKey: string,
+  apiSecret: string,
+): Promise<{ symbol: string; positionAmt: string; entryPrice: string; unRealizedProfit: string }[]> {
+  const all = await signedRequest<{ symbol: string; positionAmt: string; entryPrice: string; unRealizedProfit: string }[]>(
+    apiKey, apiSecret, '/fapi/v2/positionRisk', {}, FUTURES_URL
+  )
+  return all.filter(p => parseFloat(p.positionAmt) !== 0)
+}
+
+/** Convert raw Binance futures trades into NormalizedFills */
+export function normalizeFuturesFills(trades: BinanceFuturesTrade[], symbol: string): NormalizedFill[] {
+  return trades.map((t) => ({
+    fill_id: `binance_futures_${t.id}`,
+    ticker: symbol,
+    side: t.side === 'BUY' ? 'buy' as const : 'sell' as const,
+    quantity: parseFloat(t.qty),
+    price: parseFloat(t.price),
+    timestamp: new Date(t.time).toISOString(),
+    raw: t as unknown as Record<string, unknown>,
+  }))
 }
 
 /** Fetch recent orders for a symbol since a given time */

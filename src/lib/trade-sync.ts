@@ -2,7 +2,9 @@ import { createServiceClient } from './supabase-server'
 import type { NormalizedFill } from '@/types'
 import {
   getTradesForSymbol,
+  getFuturesTradesForSymbol,
   normalizeFills as normalizeBinanceFills,
+  normalizeFuturesFills as normalizeBinanceFuturesFills,
   DEFAULT_SYMBOLS,
 } from './binance'
 import {
@@ -297,6 +299,13 @@ async function processFills(
 
 // --- Binance sync ---
 
+// Common USDT-M futures symbols to poll
+const FUTURES_SYMBOLS = [
+  'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
+  'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'LINKUSDT', 'MATICUSDT',
+  'ARBUSDT', 'OPUSDT', 'APTUSDT', 'SUIUSDT', 'PEPEUSDT',
+]
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function syncBinanceTrades(conn: any): Promise<number> {
   const startTime = conn.last_synced_at
@@ -305,6 +314,7 @@ async function syncBinanceTrades(conn: any): Promise<number> {
 
   let closedCount = 0
 
+  // Spot trades
   for (const symbol of DEFAULT_SYMBOLS) {
     try {
       const rawTrades = await getTradesForSymbol(
@@ -315,7 +325,22 @@ async function syncBinanceTrades(conn: any): Promise<number> {
       closedCount += await processFills(conn.user_id, 'binance', fills)
     } catch (err: unknown) {
       if (err instanceof Error && err.message.includes('-1121')) continue
-      console.error(`Error syncing ${symbol} for user ${conn.user_id}:`, err)
+      console.error(`Error syncing spot ${symbol} for user ${conn.user_id}:`, err)
+    }
+  }
+
+  // USDT-M Futures trades
+  for (const symbol of FUTURES_SYMBOLS) {
+    try {
+      const rawTrades = await getFuturesTradesForSymbol(
+        conn.api_key, conn.api_secret, symbol, startTime
+      )
+      if (rawTrades.length === 0) continue
+      const fills = normalizeBinanceFuturesFills(rawTrades, symbol)
+      closedCount += await processFills(conn.user_id, 'binance', fills)
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes('-1121')) continue
+      console.error(`Error syncing futures ${symbol} for user ${conn.user_id}:`, err)
     }
   }
 
