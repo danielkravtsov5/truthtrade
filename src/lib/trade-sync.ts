@@ -339,8 +339,10 @@ async function syncBinanceTrades(conn: any): Promise<number> {
       const fills = normalizeBinanceFuturesFills(rawTrades, symbol)
       closedCount += await processFills(conn.user_id, 'binance', fills)
     } catch (err: unknown) {
-      if (err instanceof Error && err.message.includes('-1121')) continue
-      console.error(`Error syncing futures ${symbol} for user ${conn.user_id}:`, err)
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('-1121')) continue
+      console.error(`Error syncing futures ${symbol}: ${msg}`)
+      break // Stop polling more symbols if API key lacks futures permission
     }
   }
 
