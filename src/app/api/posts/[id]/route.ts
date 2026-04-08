@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -35,7 +35,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { error } = await supabase
+  const admin = createServiceClient()
+  const { error } = await admin
     .from('posts')
     .delete()
     .eq('id', id)
