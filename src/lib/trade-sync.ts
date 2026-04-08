@@ -208,7 +208,6 @@ async function processFills(
               pnl_pct: Math.round(pnlPct * 100) / 100,
               opened_at: openedAt,
               closed_at: fill.timestamp,
-              is_position_close: true,
               raw_data: { fills: accumulatedFills },
             })
             .select()

@@ -60,7 +60,6 @@ export async function POST(req: Request) {
       pnl_pct: Math.round(pnlPct * 100) / 100,
       opened_at: openedAt.toISOString(),
       closed_at: closedAt.toISOString(),
-      is_position_close: true,
       raw_data: { mock: true },
     })
     .select()
