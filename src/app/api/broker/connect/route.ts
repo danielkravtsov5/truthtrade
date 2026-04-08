@@ -36,9 +36,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Verify the keys work before saving
-  const valid = await verifyApiKey(api_key, api_secret)
-  if (!valid) {
-    return NextResponse.json({ error: 'Invalid Binance API keys' }, { status: 400 })
+  const result = await verifyApiKey(api_key, api_secret)
+  if (!result.valid) {
+    return NextResponse.json({ error: result.error ?? 'Invalid Binance API keys' }, { status: 400 })
   }
 
   const { error } = await supabase

@@ -96,13 +96,14 @@ export async function getOrdersForSymbol(
 }
 
 /** Verify that an API key is valid and has read permissions */
-export async function verifyApiKey(apiKey: string, apiSecret: string): Promise<boolean> {
+export async function verifyApiKey(apiKey: string, apiSecret: string): Promise<{ valid: boolean; error?: string }> {
   try {
     await signedRequest(apiKey, apiSecret, '/api/v3/account')
-    return true
+    return { valid: true }
   } catch (err) {
-    console.error('Binance verifyApiKey failed:', err)
-    return false
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('Binance verifyApiKey failed:', message)
+    return { valid: false, error: message }
   }
 }
 
