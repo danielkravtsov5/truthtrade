@@ -31,6 +31,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const ADMIN_USER_ID = process.env.ADMIN_USER_ID
+  console.log('DELETE post check:', { userId: user.id, adminId: ADMIN_USER_ID, match: user.id === ADMIN_USER_ID })
   if (user.id !== ADMIN_USER_ID) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
