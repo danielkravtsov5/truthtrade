@@ -12,6 +12,19 @@ interface ProfileHeaderProps {
   isFollowing: boolean
 }
 
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="relative group/tip inline-flex ml-0.5 cursor-help">
+      <svg className="w-3 h-3 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 0-2 0 1 1 0 0 0 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
+      </svg>
+      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 text-xs text-white bg-gray-800 rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover/tip:opacity-100 transition-opacity z-10">
+        {text}
+      </span>
+    </span>
+  )
+}
+
 function CameraIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -210,15 +223,15 @@ export default function ProfileHeader({ user, stats, isOwn, isFollowing }: Profi
         <div className="grid grid-cols-5 gap-1 mt-4 p-3 bg-gray-50 rounded-xl text-center">
           <div>
             <div className={`font-bold ${winRate >= 50 ? 'text-emerald-600' : 'text-red-600'}`}>{winRate}%</div>
-            <div className="text-gray-500 text-xs">Win Rate</div>
+            <div className="text-gray-500 text-xs flex items-center justify-center">Win Rate <InfoTooltip text="Percentage of trades closed in profit" /></div>
           </div>
           <div>
             <div className="font-bold text-gray-900">{formatProfitFactor(stats.profit_factor)}</div>
-            <div className="text-gray-500 text-xs">PF</div>
+            <div className="text-gray-500 text-xs flex items-center justify-center">PF <InfoTooltip text="Profit Factor — gross profit divided by gross loss" /></div>
           </div>
           <div>
             <div className="font-bold text-gray-900">{stats.total_trades}</div>
-            <div className="text-gray-500 text-xs">Trades</div>
+            <div className="text-gray-500 text-xs flex items-center justify-center">Trades <InfoTooltip text="Total number of closed trades" /></div>
           </div>
           <div>
             {pnlVisible ? (
@@ -229,7 +242,7 @@ export default function ProfileHeader({ user, stats, isOwn, isFollowing }: Profi
               <div className="font-bold text-gray-400 text-sm">Hidden</div>
             )}
             <div className="text-gray-500 text-xs flex items-center justify-center gap-1">
-              P&L
+              P&L <InfoTooltip text="Total profit and loss across all trades" />
               {isOwn && (
                 <button onClick={togglePnlVisibility} className="text-gray-400 hover:text-gray-600" title={pnlVisible ? 'Hide P&L' : 'Show P&L'}>
                   {pnlVisible ? (
@@ -252,7 +265,7 @@ export default function ProfileHeader({ user, stats, isOwn, isFollowing }: Profi
             ) : (
               <div className="font-bold text-gray-400 text-sm">--</div>
             )}
-            <div className="text-gray-500 text-xs">Broker</div>
+            <div className="text-gray-500 text-xs flex items-center justify-center">Broker <InfoTooltip text="Connected broker account for verified trades" /></div>
           </div>
         </div>
       </div>
