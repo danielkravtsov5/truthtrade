@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import Navbar from '@/components/Navbar'
 import TradeCard from '@/components/TradeCard'
 import { Post, Comment, PostMedia } from '@/types'
 import { createClient } from '@/lib/supabase'
@@ -113,23 +112,15 @@ export default function TradeDetailPage() {
 
   if (!post) {
     return (
-      <div className="flex min-h-screen">
-        <Navbar />
-        <main className="flex-1 md:ml-64 pb-20 md:pb-0">
-          <div className="max-w-xl mx-auto px-4 py-8 animate-pulse space-y-4">
-            <div className="h-6 bg-gray-200 rounded w-32" />
-            <div className="h-48 bg-gray-100 rounded-2xl" />
-          </div>
-        </main>
+      <div className="max-w-xl mx-auto px-4 py-8 animate-pulse space-y-4">
+        <div className="h-6 bg-gray-200 rounded w-32" />
+        <div className="h-48 bg-gray-100 rounded-2xl" />
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen">
-      <Navbar />
-      <main className="flex-1 md:ml-64 pb-20 md:pb-0">
-        <div className="max-w-xl mx-auto px-4 py-4">
+    <div className="max-w-xl mx-auto px-4 py-4">
           <h1 className="font-bold text-lg text-gray-900 mb-4">Trade</h1>
 
           <TradeCard post={post} />
@@ -268,8 +259,6 @@ export default function TradeDetailPage() {
               </button>
             </form>
           </div>
-        </div>
-      </main>
     </div>
   )
 }

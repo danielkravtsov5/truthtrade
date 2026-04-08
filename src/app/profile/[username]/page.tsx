@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import Navbar from '@/components/Navbar'
 import ProfileHeader from '@/components/ProfileHeader'
 import ProfileGrid from '@/components/ProfileGrid'
 import Feed from '@/components/Feed'
@@ -91,27 +90,22 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     .limit(30)
 
   return (
-    <div className="flex min-h-screen">
-      <Navbar />
-      <main className="flex-1 md:ml-64 pb-20 md:pb-0">
-        <div className="max-w-xl mx-auto">
-          <ProfileHeader
-            user={profileUser}
-            stats={stats}
-            isOwn={currentUser?.id === profileUser.id}
-            isFollowing={isFollowing}
-          />
+    <div className="max-w-xl mx-auto">
+      <ProfileHeader
+        user={profileUser}
+        stats={stats}
+        isOwn={currentUser?.id === profileUser.id}
+        isFollowing={isFollowing}
+      />
 
-          <div className="mt-1">
-            <ProfileGrid posts={(posts as never) ?? []} />
-          </div>
+      <div className="mt-1">
+        <ProfileGrid posts={(posts as never) ?? []} />
+      </div>
 
-          <div className="px-4 mt-4">
-            <h2 className="font-semibold text-gray-900 mb-3">All trades</h2>
-            <Feed type="explore" />
-          </div>
-        </div>
-      </main>
+      <div className="px-4 mt-4">
+        <h2 className="font-semibold text-gray-900 mb-3">All trades</h2>
+        <Feed type="explore" />
+      </div>
     </div>
   )
 }

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Navbar from '@/components/Navbar'
 import { ShieldCheck, Key, AlertCircle, CheckCircle2, Trash2, User, Lock } from 'lucide-react'
 
 interface BrokerConnection {
@@ -461,10 +460,7 @@ export default function ConnectBrokerPage() {
   }
 
   return (
-    <div className="flex min-h-screen">
-      <Navbar />
-      <main className="flex-1 md:ml-64 pb-20 md:pb-0">
-        <div className="max-w-lg mx-auto px-4 py-8">
+    <div className="max-w-lg mx-auto px-4 py-8">
           <h1 className="font-bold text-2xl text-gray-900 mb-6 text-center">Broker Connections</h1>
 
           {/* READ ONLY banner */}
@@ -558,8 +554,6 @@ export default function ConnectBrokerPage() {
               {renderForm()}
             </div>
           )}
-        </div>
-      </main>
     </div>
   )
 }
