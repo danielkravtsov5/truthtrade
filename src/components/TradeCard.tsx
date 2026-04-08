@@ -157,7 +157,19 @@ export default function TradeCard({ post, compact = false, currentUserId, onDele
         <button className="flex items-center gap-1.5 hover:text-green-500 transition-colors">
           <Repeat2 size={18} />
         </button>
-        <button className="flex items-center gap-1.5 hover:text-indigo-500 transition-colors ml-auto">
+        <button
+          onClick={async () => {
+            const url = `${window.location.origin}/trade/${post.id}`
+            const text = `${trade.ticker} ${trade.side} ${trade.pnl >= 0 ? '+' : ''}$${trade.pnl.toFixed(2)} (${trade.pnl >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(2)}%) — verified on TruthTrade`
+            if (navigator.share) {
+              await navigator.share({ text, url }).catch(() => {})
+            } else {
+              await navigator.clipboard.writeText(url)
+              alert('Link copied!')
+            }
+          }}
+          className="flex items-center gap-1.5 hover:text-indigo-500 transition-colors ml-auto"
+        >
           <Share2 size={18} />
         </button>
       </div>
