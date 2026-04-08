@@ -4,6 +4,8 @@ import { User, ProfileStats } from '@/types'
 import { useRef, useState } from 'react'
 import { formatCurrency, formatJoinDate, formatProfitFactor } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase'
 
 interface ProfileHeaderProps {
   user: User
@@ -268,6 +270,29 @@ export default function ProfileHeader({ user, stats, isOwn, isFollowing }: Profi
             <div className="text-gray-500 text-xs flex items-center justify-center">Broker <InfoTooltip text="Connected broker account for verified trades" /></div>
           </div>
         </div>
+
+        {/* Mobile-only actions for own profile */}
+        {isOwn && (
+          <div className="flex gap-2 mt-4 md:hidden">
+            <Link
+              href="/connect-broker"
+              className="flex-1 text-center py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Connect Broker
+            </Link>
+            <button
+              onClick={async () => {
+                const supabase = createClient()
+                await supabase.auth.signOut()
+                router.push('/login')
+                router.refresh()
+              }}
+              className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Log out
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
