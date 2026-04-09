@@ -202,12 +202,12 @@ export default function TradeChart({ trade }: TradeChartProps) {
           const newBarArrows: BarArrow[] = []
           const newPriceArrows: PriceArrow[] = []
 
-          // --- Arrow 1: Entry candle bar arrow ---
+          // --- Arrow 1: Entry bar arrow — tip at exact entry_price ---
           const entryBarX = chart.timeScale().timeToCoordinate(entryCandle.time as Time)
-          const entryBarY = activeSeries.priceToCoordinate(
-            trade.side === 'long' ? entryCandle.high : entryCandle.low
-          )
+          const entryBarY = activeSeries.priceToCoordinate(trade.entry_price)
           if (entryBarX !== null && entryBarY !== null) {
+            // For short: arrow above pointing DOWN to entry price
+            // For long: arrow below pointing UP to entry price
             newBarArrows.push({
               x: entryBarX,
               y: entryBarY,
@@ -217,12 +217,12 @@ export default function TradeChart({ trade }: TradeChartProps) {
             })
           }
 
-          // --- Arrow 2: Exit candle bar arrow ---
+          // --- Arrow 2: Exit bar arrow — tip at exact exit_price ---
           const exitBarX = chart.timeScale().timeToCoordinate(exitCandle.time as Time)
-          const exitBarY = activeSeries.priceToCoordinate(
-            trade.side === 'long' ? exitCandle.low : exitCandle.high
-          )
+          const exitBarY = activeSeries.priceToCoordinate(trade.exit_price)
           if (exitBarX !== null && exitBarY !== null) {
+            // For short: arrow below pointing UP to exit price
+            // For long: arrow above pointing DOWN to exit price
             newBarArrows.push({
               x: exitBarX,
               y: exitBarY,
@@ -317,53 +317,60 @@ export default function TradeChart({ trade }: TradeChartProps) {
         <div className="relative">
           <div ref={containerRef} className="w-full" style={{ minHeight: 220 }} />
 
-          {/* Bar arrows — on entry/exit candles */}
+          {/* Bar arrows — tip touches exact entry/exit price */}
           {barArrows.map((arrow, i) => (
             <div
               key={`bar-${i}`}
               className="absolute pointer-events-none flex flex-col items-center"
               style={{
                 left: arrow.x - 14,
+                // Arrow tip at arrow.y: if pointing down, label+arrow above the point
+                // If pointing up, arrow+label below the point
                 top: arrow.direction === 'down'
-                  ? arrow.y + 2
-                  : arrow.y - 42,
+                  ? arrow.y - 40
+                  : arrow.y,
                 zIndex: 5,
                 width: 28,
               }}
             >
-              {arrow.direction === 'up' && (
-                <span className="text-[9px] font-bold leading-tight text-center whitespace-pre-line mb-0.5" style={{ color: arrow.color }}>
-                  {arrow.label}
-                </span>
-              )}
-              <svg width="14" height="10" viewBox="0 0 14 10" className="mx-auto">
-                {arrow.direction === 'down' ? (
-                  <polygon points="7,10 0,0 14,0" fill={arrow.color} />
-                ) : (
-                  <polygon points="7,0 0,10 14,10" fill={arrow.color} />
-                )}
-              </svg>
+              {/* For down arrow: label on top, then arrow, tip at bottom = price */}
               {arrow.direction === 'down' && (
-                <span className="text-[9px] font-bold leading-tight text-center whitespace-pre-line mt-0.5" style={{ color: arrow.color }}>
-                  {arrow.label}
-                </span>
+                <>
+                  <span className="text-[9px] font-bold leading-tight text-center whitespace-pre-line mb-0.5" style={{ color: arrow.color }}>
+                    {arrow.label}
+                  </span>
+                  <svg width="14" height="10" viewBox="0 0 14 10" className="mx-auto">
+                    <polygon points="7,10 0,0 14,0" fill={arrow.color} />
+                  </svg>
+                </>
+              )}
+              {/* For up arrow: arrow tip at top = price, then label below */}
+              {arrow.direction === 'up' && (
+                <>
+                  <svg width="14" height="10" viewBox="0 0 14 10" className="mx-auto">
+                    <polygon points="7,0 0,10 14,10" fill={arrow.color} />
+                  </svg>
+                  <span className="text-[9px] font-bold leading-tight text-center whitespace-pre-line mt-0.5" style={{ color: arrow.color }}>
+                    {arrow.label}
+                  </span>
+                </>
               )}
             </div>
           ))}
 
-          {/* Price arrows — on right edge at exact price levels */}
+          {/* Price arrows — small triangles on the price scale border */}
           {priceArrows.map((arrow, i) => (
             <div
               key={`price-${i}`}
-              className="absolute pointer-events-none flex items-center"
+              className="absolute pointer-events-none"
               style={{
-                right: 2,
-                top: arrow.y - 8,
+                right: 52,
+                top: arrow.y - 5,
                 zIndex: 5,
               }}
             >
-              <svg width="8" height="16" viewBox="0 0 8 16">
-                <polygon points="0,8 8,0 8,16" fill={arrow.color} />
+              <svg width="10" height="10" viewBox="0 0 10 10">
+                <polygon points="0,5 10,0 10,10" fill={arrow.color} />
               </svg>
             </div>
           ))}
