@@ -349,21 +349,32 @@ export default function TradeDetailPage() {
               )}
 
               {/* Add content buttons */}
-              <div className="flex gap-2 pt-3 border-t border-gray-100">
+              {(() => {
+                const imgCount = media.filter(m => m.type === 'image').length
+                const vidCount = media.filter(m => m.type === 'video').length
+                const canAddImage = imgCount < 5
+                const canAddVideo = vidCount < 1
+                const canAddFile = canAddImage || canAddVideo
+                return (
+              <div className="flex flex-col gap-2 pt-3 border-t border-gray-100">
+                {(imgCount > 0 || vidCount > 0) && (
+                  <p className="text-xs text-gray-400">{imgCount}/5 images, {vidCount}/1 video</p>
+                )}
+                <div className="flex gap-2">
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*,video/*"
+                  accept={canAddImage && canAddVideo ? 'image/*,video/*' : canAddVideo ? 'video/*' : 'image/*'}
                   onChange={handleFileSelect}
                   className="hidden"
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading || !!pendingFile}
+                  disabled={uploading || !!pendingFile || !canAddFile}
                   className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                 >
                   <ImagePlus size={16} />
-                  Add Image/Video
+                  {canAddFile ? 'Add Image/Video' : 'Limit reached'}
                 </button>
                 <button
                   onClick={() => setTextSlideEditor({ mode: 'add', body: '' })}
@@ -373,7 +384,10 @@ export default function TradeDetailPage() {
                   <Type size={16} />
                   Add Text Slide
                 </button>
+                </div>
               </div>
+                )
+              })()}
             </div>
           )}
 

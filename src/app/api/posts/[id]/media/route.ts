@@ -37,9 +37,18 @@ export async function POST(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
+  // Enforce media limits: max 5 images + 1 video
+  const { data: existing } = await supabase
+    .from('post_media')
+    .select('type')
+    .eq('post_id', postId)
+
+  const imageCount = existing?.filter(m => m.type === 'image').length ?? 0
+  const videoCount = existing?.filter(m => m.type === 'video').length ?? 0
+
   const contentType = req.headers.get('content-type') ?? ''
 
-  // Text slide
+  // Text slide (no limit on text slides)
   if (contentType.includes('application/json')) {
     const { body, sort_order = 0 } = await req.json()
     const { data: media, error } = await supabase
@@ -60,6 +69,13 @@ export async function POST(
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
   const isVideo = file.type.startsWith('video/')
+  if (isVideo && videoCount >= 1) {
+    return NextResponse.json({ error: 'Maximum 1 video per post' }, { status: 400 })
+  }
+  if (!isVideo && imageCount >= 5) {
+    return NextResponse.json({ error: 'Maximum 5 images per post' }, { status: 400 })
+  }
+
   const mediaType = isVideo ? 'video' : 'image'
   const ext = file.name.split('.').pop() ?? 'bin'
   const path = `${user.id}/${postId}/${Date.now()}.${ext}`
