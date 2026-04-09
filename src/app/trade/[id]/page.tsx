@@ -6,7 +6,7 @@ import TradeCard from '@/components/TradeCard'
 import { Post, Comment, PostMedia } from '@/types'
 import { createClient } from '@/lib/supabase'
 import PostCarousel from '@/components/PostCarousel'
-import { Send, ImagePlus, X, GripVertical, Pencil, Type, FileText } from 'lucide-react'
+import { Send, ImagePlus, X, GripVertical, Pencil, Type, FileText, Reply } from 'lucide-react'
 import { formatDistanceToNow } from '@/lib/utils'
 
 export default function TradeDetailPage() {
@@ -16,6 +16,7 @@ export default function TradeDetailPage() {
   const [post, setPost] = useState<Post | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [commentBody, setCommentBody] = useState('')
+  const [replyTo, setReplyTo] = useState<{ id: string; username: string } | null>(null)
   const [analysis, setAnalysis] = useState('')
   const [savedAnalysis, setSavedAnalysis] = useState('')
   const [isOwn, setIsOwn] = useState(false)
@@ -49,12 +50,13 @@ export default function TradeDetailPage() {
 
     Promise.all([
       fetch(`/api/posts/${id}`).then(r => r.json()),
+      fetch(`/api/posts/${id}/comments`).then(r => r.json()),
       supabase.auth.getUser(),
-    ]).then(([data, { data: { user } }]) => {
+    ]).then(([data, threadedComments, { data: { user } }]) => {
       setPost(data)
       setAnalysis(data.analysis ?? '')
       setSavedAnalysis(data.analysis ?? '')
-      setComments(data.comments ?? [])
+      setComments(threadedComments ?? [])
       setMedia(data.media ?? [])
       if (user && data.user_id === user.id) {
         setIsOwn(true)
@@ -66,15 +68,28 @@ export default function TradeDetailPage() {
   async function submitComment(e: React.FormEvent) {
     e.preventDefault()
     if (!commentBody.trim()) return
+    const payload: Record<string, string> = { body: commentBody }
+    if (replyTo) payload.parent_comment_id = replyTo.id
+
     const res = await fetch(`/api/posts/${id}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body: commentBody }),
+      body: JSON.stringify(payload),
     })
     if (res.ok) {
       const comment = await res.json()
-      setComments(prev => [...prev, comment])
+      if (replyTo) {
+        // Insert reply under its parent
+        setComments(prev => prev.map(c =>
+          c.id === replyTo.id
+            ? { ...c, replies: [...(c.replies ?? []), comment] }
+            : c
+        ))
+      } else {
+        setComments(prev => [...prev, comment])
+      }
       setCommentBody('')
+      setReplyTo(null)
     }
   }
 
@@ -443,25 +458,63 @@ export default function TradeDetailPage() {
 
             <div className="space-y-4 mb-4">
               {comments.map(comment => (
-                <div key={comment.id} className="flex gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                    {(comment.user?.display_name ?? comment.user?.username ?? '?')[0].toUpperCase()}
+                <div key={comment.id}>
+                  {/* Parent comment */}
+                  <div className="flex gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                      {(comment.user?.display_name ?? comment.user?.username ?? '?')[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-semibold text-sm text-gray-900">@{comment.user?.username}</span>
+                      <span className="text-gray-400 text-xs ml-2">{formatDistanceToNow(comment.created_at)}</span>
+                      <p className="text-sm text-gray-700 mt-0.5">{comment.body}</p>
+                      <button
+                        onClick={() => { setReplyTo({ id: comment.id, username: comment.user?.username ?? '' }); }}
+                        className="flex items-center gap-1 text-gray-400 hover:text-indigo-500 text-xs mt-1 transition-colors"
+                      >
+                        <Reply size={12} />
+                        Reply
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-semibold text-sm text-gray-900">@{comment.user?.username}</span>
-                    <span className="text-gray-400 text-xs ml-2">{formatDistanceToNow(comment.created_at)}</span>
-                    <p className="text-sm text-gray-700 mt-0.5">{comment.body}</p>
-                  </div>
+
+                  {/* Replies */}
+                  {comment.replies && comment.replies.length > 0 && (
+                    <div className="ml-10 mt-2 space-y-3 border-l-2 border-gray-100 pl-3">
+                      {comment.replies.map(reply => (
+                        <div key={reply.id} className="flex gap-2">
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-300 to-purple-400 flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0">
+                            {(reply.user?.display_name ?? reply.user?.username ?? '?')[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <span className="font-semibold text-xs text-gray-900">@{reply.user?.username}</span>
+                            <span className="text-gray-400 text-[10px] ml-1.5">{formatDistanceToNow(reply.created_at)}</span>
+                            <p className="text-xs text-gray-700 mt-0.5">{reply.body}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+
+            {/* Reply indicator */}
+            {replyTo && (
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <span className="text-xs text-indigo-500">Replying to @{replyTo.username}</span>
+                <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-gray-600">
+                  <X size={12} />
+                </button>
+              </div>
+            )}
 
             <form onSubmit={submitComment} className="flex gap-2">
               <input
                 type="text"
                 value={commentBody}
                 onChange={e => setCommentBody(e.target.value)}
-                placeholder="Add a comment..."
+                placeholder={replyTo ? `Reply to @${replyTo.username}...` : 'Add a comment...'}
                 className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <button type="submit" className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors">

@@ -77,9 +77,11 @@ export interface Comment {
   id: string
   user_id: string
   post_id: string
+  parent_comment_id: string | null
   body: string
   created_at: string
   user?: User
+  replies?: Comment[]
 }
 
 export interface Follow {
