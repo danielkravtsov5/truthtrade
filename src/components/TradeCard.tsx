@@ -2,7 +2,7 @@
 
 import { Post } from '@/types'
 import { formatDistanceToNow } from '@/lib/utils'
-import { Heart, MessageCircle, Repeat2, Share2, CheckCircle, Trash2 } from 'lucide-react'
+import { Heart, MessageCircle, Repeat2, Share2, CheckCircle, Trash2, Pencil } from 'lucide-react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useState, useCallback } from 'react'
@@ -23,6 +23,7 @@ export default function TradeCard({ post, compact = false, currentUserId, onDele
   const [deleting, setDeleting] = useState(false)
 
   const isAdmin = currentUserId === process.env.NEXT_PUBLIC_ADMIN_USER_ID
+  const isOwner = currentUserId === post.user_id
 
   const handleDelete = useCallback(async () => {
     if (!confirm('Delete this post?')) return
@@ -133,11 +134,26 @@ export default function TradeCard({ post, compact = false, currentUserId, onDele
 
       {/* Analysis */}
       {post.analysis && (
-        <p className="text-gray-800 text-sm mb-3 leading-relaxed whitespace-pre-wrap">{post.analysis}</p>
+        <div className="mb-3">
+          <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">{post.analysis}</p>
+          {isOwner && (
+            <Link href={`/trade/${post.id}?edit=1`} className="inline-flex items-center gap-1 text-indigo-500 text-xs hover:underline mt-1">
+              <Pencil size={12} />
+              Edit analysis
+            </Link>
+          )}
+        </div>
       )}
-      {!post.analysis && post.user?.id && (
+      {!post.analysis && isOwner && (
         <Link href={`/trade/${post.id}`} className="text-indigo-500 text-sm hover:underline block mb-3">
           Add your analysis...
+        </Link>
+      )}
+      {/* Owner has media but no text — still show edit link */}
+      {!post.analysis && isOwner && post.media && post.media.length > 0 && (
+        <Link href={`/trade/${post.id}?edit=1`} className="inline-flex items-center gap-1 text-indigo-500 text-xs hover:underline mb-3">
+          <Pencil size={12} />
+          Edit analysis
         </Link>
       )}
 

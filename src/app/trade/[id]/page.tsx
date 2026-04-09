@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import TradeCard from '@/components/TradeCard'
 import { Post, Comment, PostMedia } from '@/types'
 import { createClient } from '@/lib/supabase'
@@ -12,6 +12,7 @@ import { formatDistanceToNow } from '@/lib/utils'
 export default function TradeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [post, setPost] = useState<Post | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [commentBody, setCommentBody] = useState('')
@@ -55,7 +56,10 @@ export default function TradeDetailPage() {
       setSavedAnalysis(data.analysis ?? '')
       setComments(data.comments ?? [])
       setMedia(data.media ?? [])
-      if (user && data.user_id === user.id) setIsOwn(true)
+      if (user && data.user_id === user.id) {
+        setIsOwn(true)
+        if (searchParams.get('edit') === '1') setEditing(true)
+      }
     })
   }, [id])
 
