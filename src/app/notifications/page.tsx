@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Bell, Heart, MessageCircle, UserPlus, TrendingUp, Check } from 'lucide-react'
+import { Bell, Heart, MessageCircle, UserPlus, TrendingUp, Check, Lightbulb } from 'lucide-react'
 import Link from 'next/link'
 import type { Notification } from '@/types'
 
@@ -26,6 +26,10 @@ function NotificationIcon({ type }: { type: Notification['type'] }) {
       return <UserPlus size={16} className="text-indigo-500" />
     case 'new_trade':
       return <TrendingUp size={16} className="text-emerald-500" />
+    case 'insight_like':
+      return <Heart size={16} className="text-red-500" />
+    case 'insight_comment':
+      return <MessageCircle size={16} className="text-blue-500" />
   }
 }
 
@@ -44,11 +48,18 @@ function notificationText(n: Notification): string {
       const pnlStr = pnl !== undefined ? (pnl >= 0 ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`) : ''
       return `${name} closed a trade${ticker ? `: ${ticker}` : ''}${pnlStr ? ` (${pnlStr})` : ''}`
     }
+    case 'insight_like':
+      return `${name} liked your insight`
+    case 'insight_comment':
+      return `${name} commented on your insight`
   }
 }
 
 function notificationHref(n: Notification): string {
   if (n.type === 'follow') return `/profile/${n.actor?.username}`
+  if (n.type === 'insight_like' || n.type === 'insight_comment') {
+    return n.insight_id ? `/insight/${n.insight_id}` : '#'
+  }
   if (n.post_id) return `/trade/${n.post_id}`
   return '#'
 }

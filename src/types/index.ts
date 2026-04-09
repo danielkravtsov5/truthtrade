@@ -113,7 +113,29 @@ export interface ProfileStats {
   broker_name: string | null
 }
 
-export type NotificationType = 'like' | 'comment' | 'follow' | 'new_trade'
+export interface Insight {
+  id: string
+  user_id: string
+  body: string
+  created_at: string
+  updated_at: string
+  // Joined fields
+  user?: User
+  like_count?: number
+  comment_count?: number
+  user_has_liked?: boolean
+}
+
+export interface InsightComment {
+  id: string
+  user_id: string
+  insight_id: string
+  body: string
+  created_at: string
+  user?: User
+}
+
+export type NotificationType = 'like' | 'comment' | 'follow' | 'new_trade' | 'insight_like' | 'insight_comment'
 
 export interface Notification {
   id: string
@@ -121,10 +143,12 @@ export interface Notification {
   actor_id: string
   type: NotificationType
   post_id: string | null
+  insight_id: string | null
   read: boolean
   created_at: string
   actor?: User
   post?: { id: string; trade?: { ticker: string; side: string; pnl: number } }
+  insight?: { id: string; body: string }
 }
 
 export interface LeaderboardEntry {

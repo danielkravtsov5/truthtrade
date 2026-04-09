@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Compass, User, TrendingUp, LogOut, LogIn, Bell, BarChart3, Trophy } from 'lucide-react'
+import { Home, Compass, User, TrendingUp, LogOut, LogIn, Bell, Lightbulb, Trophy } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -33,7 +33,7 @@ export default function Navbar() {
     { href: '/explore', icon: Compass, label: 'Explore' },
     { href: '/leaderboard', icon: Trophy, label: 'Ranks' },
     ...(username ? [
-      { href: '/dashboard', icon: BarChart3, label: 'Dashboard' },
+      { href: '/insights', icon: Lightbulb, label: 'Insights' },
       { href: '/notifications', icon: Bell, label: 'Alerts' },
       { href: '/connect-broker', icon: TrendingUp, label: 'Connect' },
       { href: `/profile/${username}`, icon: User, label: 'Profile' },
@@ -45,7 +45,7 @@ export default function Navbar() {
     { href: '/explore', icon: Compass, label: 'Explore' },
     { href: '/leaderboard', icon: Trophy, label: 'Ranks' },
     ...(username ? [
-      { href: '/dashboard', icon: BarChart3, label: 'Stats' },
+      { href: '/insights', icon: Lightbulb, label: 'Insights' },
       { href: `/profile/${username}`, icon: User, label: 'Profile' },
     ] : []),
   ]
