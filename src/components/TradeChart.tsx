@@ -46,40 +46,21 @@ function getExitFills(trade: Trade): ExitFill[] {
   return exitFills.map(f => ({ price: f.price, timestamp: f.timestamp }))
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function addPriceLines(series: any, trade: Trade) {
-  const isProfit = trade.pnl >= 0
-  const exitFills = getExitFills(trade)
-
-  series.createPriceLine({
-    price: trade.entry_price,
-    color: '#3b82f6',
-    lineWidth: 1,
-    lineStyle: LineStyle.Dashed,
-    axisLabelVisible: false,
-    title: '',
-  })
-
-  const exitColor = isProfit ? '#10b981' : '#ef4444'
-  const uniqueExitPrices = [...new Set(exitFills.map(f => f.price))]
-  uniqueExitPrices.forEach((price) => {
-    series.createPriceLine({
-      price,
-      color: exitColor,
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
-      axisLabelVisible: false,
-      title: '',
-    })
-  })
-}
-
-interface ArrowOverlay {
+/** Candle bar arrow — sits above/below a candle */
+interface BarArrow {
   x: number
   y: number
   color: string
   label: string
   direction: 'up' | 'down'
+}
+
+/** Price level arrow — sits on the right edge pointing left */
+interface PriceArrow {
+  y: number
+  color: string
+  label: string
+  price: number
 }
 
 export default function TradeChart({ trade }: TradeChartProps) {
@@ -88,14 +69,16 @@ export default function TradeChart({ trade }: TradeChartProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [interval, setInterval] = useState<string | null>(null)
-  const [arrows, setArrows] = useState<ArrowOverlay[]>([])
+  const [barArrows, setBarArrows] = useState<BarArrow[]>([])
+  const [priceArrows, setPriceArrows] = useState<PriceArrow[]>([])
 
   useEffect(() => {
     if (!containerRef.current) return
 
     setLoading(true)
     setError(false)
-    setArrows([])
+    setBarArrows([])
+    setPriceArrows([])
 
     let cancelled = false
 
@@ -142,10 +125,11 @@ export default function TradeChart({ trade }: TradeChartProps) {
 
         chartRef.current = chart
 
-        const entryTime = findClosestTime(candles, new Date(trade.opened_at).getTime() / 1000)
+        const entryCandle = findClosestCandle(candles, new Date(trade.opened_at).getTime() / 1000)
         const exitFills = getExitFills(trade)
+        const lastExitFill = exitFills[exitFills.length - 1]
+        const exitCandle = findClosestCandle(candles, new Date(lastExitFill.timestamp).getTime() / 1000)
 
-        // Use candlestick if we have OHLC data, otherwise line
         const hasOhlc = candles.some(c => c.high !== c.low)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let activeSeries: any
@@ -169,7 +153,6 @@ export default function TradeChart({ trade }: TradeChartProps) {
           }))
 
           candleSeries.setData(candleData)
-          addPriceLines(candleSeries, trade)
           activeSeries = candleSeries
         } else {
           const lineSeries = chart.addSeries(LineSeries, {
@@ -183,55 +166,101 @@ export default function TradeChart({ trade }: TradeChartProps) {
           }))
 
           lineSeries.setData(lineData)
-          addPriceLines(lineSeries, trade)
           activeSeries = lineSeries
         }
 
-        chart.timeScale().fitContent()
-
-        // Compute overlay arrow positions using pixel coordinates
+        // Dashed price level lines (no axis labels — price arrows handle that)
         const isProfit = trade.pnl >= 0
         const exitColor = isProfit ? '#10b981' : '#ef4444'
 
-        const computeArrows = () => {
-          if (!activeSeries || cancelled) return
-          const newArrows: ArrowOverlay[] = []
+        activeSeries.createPriceLine({
+          price: trade.entry_price,
+          color: '#3b82f6',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: false,
+          title: '',
+        })
 
-          // Entry arrow
-          const entryX = chart.timeScale().timeToCoordinate(entryTime as Time)
-          const entryY = activeSeries.priceToCoordinate(trade.entry_price)
-          if (entryX !== null && entryY !== null) {
-            newArrows.push({
-              x: entryX,
-              y: entryY,
-              color: '#3b82f6',
-              label: `${trade.side === 'short' ? '-' : ''}${trade.quantity}`,
+        const uniqueExitPrices = [...new Set(exitFills.map(f => f.price))]
+        uniqueExitPrices.forEach((price) => {
+          activeSeries.createPriceLine({
+            price,
+            color: exitColor,
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: false,
+            title: '',
+          })
+        })
+
+        chart.timeScale().fitContent()
+
+        const computeOverlays = () => {
+          if (!activeSeries || cancelled) return
+
+          const newBarArrows: BarArrow[] = []
+          const newPriceArrows: PriceArrow[] = []
+
+          // --- Arrow 1: Entry candle bar arrow ---
+          const entryBarX = chart.timeScale().timeToCoordinate(entryCandle.time as Time)
+          const entryBarY = activeSeries.priceToCoordinate(
+            trade.side === 'long' ? entryCandle.high : entryCandle.low
+          )
+          if (entryBarX !== null && entryBarY !== null) {
+            newBarArrows.push({
+              x: entryBarX,
+              y: entryBarY,
+              color: '#ef4444',
+              label: `${trade.side === 'short' ? '-' : ''}${trade.quantity}\n${trade.side === 'long' ? 'Long' : 'Short'}`,
               direction: trade.side === 'long' ? 'up' : 'down',
             })
           }
 
-          // Exit arrows — one per fill, at the fill's candle
-          exitFills.forEach((fill, i) => {
-            const fillTime = findClosestTime(candles, new Date(fill.timestamp).getTime() / 1000)
-            const x = chart.timeScale().timeToCoordinate(fillTime as Time)
-            const y = activeSeries.priceToCoordinate(fill.price)
-            if (x !== null && y !== null) {
-              newArrows.push({
-                x,
-                y,
-                color: exitColor,
-                label: exitFills.length > 1 ? `TP${i + 1}` : 'TP',
-                direction: trade.side === 'long' ? 'down' : 'up',
-              })
-            }
-          })
+          // --- Arrow 2: Exit candle bar arrow ---
+          const exitBarX = chart.timeScale().timeToCoordinate(exitCandle.time as Time)
+          const exitBarY = activeSeries.priceToCoordinate(
+            trade.side === 'long' ? exitCandle.low : exitCandle.high
+          )
+          if (exitBarX !== null && exitBarY !== null) {
+            newBarArrows.push({
+              x: exitBarX,
+              y: exitBarY,
+              color: '#a855f7',
+              label: `TP\n+${trade.quantity}`,
+              direction: trade.side === 'long' ? 'down' : 'up',
+            })
+          }
 
-          setArrows(newArrows)
+          // --- Arrow 3: Entry price level (right side) ---
+          const entryPriceY = activeSeries.priceToCoordinate(trade.entry_price)
+          if (entryPriceY !== null) {
+            newPriceArrows.push({
+              y: entryPriceY,
+              color: '#ef4444',
+              label: `$${trade.entry_price.toFixed(2)}`,
+              price: trade.entry_price,
+            })
+          }
+
+          // --- Arrow 4: Exit price level (right side) ---
+          const exitPriceY = activeSeries.priceToCoordinate(trade.exit_price)
+          if (exitPriceY !== null) {
+            newPriceArrows.push({
+              y: exitPriceY,
+              color: '#a855f7',
+              label: `$${trade.exit_price.toFixed(2)}`,
+              price: trade.exit_price,
+            })
+          }
+
+          setBarArrows(newBarArrows)
+          setPriceArrows(newPriceArrows)
         }
 
         requestAnimationFrame(() => {
-          computeArrows()
-          chart.timeScale().subscribeVisibleLogicalRangeChange(computeArrows)
+          computeOverlays()
+          chart.timeScale().subscribeVisibleLogicalRangeChange(computeOverlays)
         })
 
         setLoading(false)
@@ -287,28 +316,27 @@ export default function TradeChart({ trade }: TradeChartProps) {
       ) : (
         <div className="relative">
           <div ref={containerRef} className="w-full" style={{ minHeight: 220 }} />
-          {/* Arrow overlays at exact entry/exit positions on chart */}
-          {arrows.map((arrow, i) => (
+
+          {/* Bar arrows — on entry/exit candles */}
+          {barArrows.map((arrow, i) => (
             <div
-              key={i}
+              key={`bar-${i}`}
               className="absolute pointer-events-none flex flex-col items-center"
               style={{
-                left: arrow.x - 12,
-                top: arrow.direction === 'down' ? arrow.y : arrow.y - 28,
+                left: arrow.x - 14,
+                top: arrow.direction === 'down'
+                  ? arrow.y + 2
+                  : arrow.y - 42,
                 zIndex: 5,
+                width: 28,
               }}
             >
-              {/* Label above/below arrow */}
               {arrow.direction === 'up' && (
-                <span
-                  className="text-[9px] font-bold leading-none mb-0.5"
-                  style={{ color: arrow.color }}
-                >
+                <span className="text-[9px] font-bold leading-tight text-center whitespace-pre-line mb-0.5" style={{ color: arrow.color }}>
                   {arrow.label}
                 </span>
               )}
-              {/* Arrow SVG */}
-              <svg width="14" height="10" viewBox="0 0 14 10">
+              <svg width="14" height="10" viewBox="0 0 14 10" className="mx-auto">
                 {arrow.direction === 'down' ? (
                   <polygon points="7,10 0,0 14,0" fill={arrow.color} />
                 ) : (
@@ -316,13 +344,27 @@ export default function TradeChart({ trade }: TradeChartProps) {
                 )}
               </svg>
               {arrow.direction === 'down' && (
-                <span
-                  className="text-[9px] font-bold leading-none mt-0.5"
-                  style={{ color: arrow.color }}
-                >
+                <span className="text-[9px] font-bold leading-tight text-center whitespace-pre-line mt-0.5" style={{ color: arrow.color }}>
                   {arrow.label}
                 </span>
               )}
+            </div>
+          ))}
+
+          {/* Price arrows — on right edge at exact price levels */}
+          {priceArrows.map((arrow, i) => (
+            <div
+              key={`price-${i}`}
+              className="absolute pointer-events-none flex items-center"
+              style={{
+                right: 2,
+                top: arrow.y - 8,
+                zIndex: 5,
+              }}
+            >
+              <svg width="8" height="16" viewBox="0 0 8 16">
+                <polygon points="0,8 8,0 8,16" fill={arrow.color} />
+              </svg>
             </div>
           ))}
         </div>
@@ -339,6 +381,19 @@ function findClosestTime(candles: Candle[], targetSec: number): number {
     if (diff < minDiff) {
       minDiff = diff
       closest = c.time
+    }
+  }
+  return closest
+}
+
+function findClosestCandle(candles: Candle[], targetSec: number): Candle {
+  let closest = candles[0]
+  let minDiff = Math.abs(candles[0].time - targetSec)
+  for (const c of candles) {
+    const diff = Math.abs(c.time - targetSec)
+    if (diff < minDiff) {
+      minDiff = diff
+      closest = c
     }
   }
   return closest
