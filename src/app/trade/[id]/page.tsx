@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import TradeCard from '@/components/TradeCard'
 import { Post, Comment, PostMedia } from '@/types'
 import { createClient } from '@/lib/supabase'
+import PostCarousel from '@/components/PostCarousel'
 import { Send, ImagePlus, X, GripVertical, Pencil, Type, FileText } from 'lucide-react'
 import { formatDistanceToNow } from '@/lib/utils'
 
@@ -20,6 +21,7 @@ export default function TradeDetailPage() {
   const [savingAnalysis, setSavingAnalysis] = useState(false)
   const [media, setMedia] = useState<PostMedia[]>([])
   const [uploading, setUploading] = useState(false)
+  const [editing, setEditing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Text slide editor state
@@ -219,174 +221,208 @@ export default function TradeDetailPage() {
           {/* Your Explanation (own post) */}
           {isOwn && (
             <div className="mt-4 bg-white border border-gray-200 rounded-2xl p-4">
-              <h2 className="font-semibold text-gray-900 text-sm mb-1">Your Explanation</h2>
-              <p className="text-gray-400 text-xs mb-4">Add your reasoning, screenshots, or notes. The trade data above is verified and can&apos;t be changed.</p>
-
-              {/* Empty state */}
-              {!analysis && !savedAnalysis && media.length === 0 && !textSlideEditor && !pendingFile && (
-                <div className="text-center py-6 mb-3">
-                  <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <FileText size={20} className="text-indigo-400" />
-                  </div>
-                  <p className="text-gray-900 font-medium text-sm">Tell others about this trade</p>
-                  <p className="text-gray-400 text-xs mt-1">Add analysis, screenshots, or text slides to explain your thinking</p>
-                </div>
-              )}
-
-              {/* Analysis textarea (always visible) */}
-              <div className="mb-3">
-                <textarea
-                  value={analysis}
-                  onChange={e => setAnalysis(e.target.value)}
-                  rows={4}
-                  placeholder="Why did you take this trade? What did you see?"
-                  className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-                />
-              </div>
-
-              {/* Media grid with drag-to-reorder */}
-              {media.length > 0 && (
-                <div className="grid grid-cols-3 gap-2 mb-3">
-                  {[...media].sort((a, b) => a.sort_order - b.sort_order).map((item, index) => (
-                    <div
-                      key={item.id}
-                      className={`relative group cursor-grab active:cursor-grabbing ${dragOverIndex === index ? 'ring-2 ring-indigo-400 rounded-lg' : ''}`}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, index)}
-                      onDragOver={(e) => handleDragOver(e, index)}
-                      onDragEnd={handleDragEnd}
+              {/* Published read-only view */}
+              {(savedAnalysis || media.length > 0) && !editing ? (
+                <>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="font-semibold text-gray-900 text-sm">Your Analysis</h2>
+                    <button
+                      onClick={() => setEditing(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-50"
                     >
-                      {/* Drag handle */}
-                      <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-70 text-white z-10 drop-shadow">
-                        <GripVertical size={14} />
-                      </div>
-
-                      {item.type === 'image' && item.url && (
-                        <img src={item.url} alt="" className="w-full aspect-square object-cover rounded-lg" />
-                      )}
-                      {item.type === 'video' && (
-                        <div className="w-full aspect-square bg-gray-900 rounded-lg flex items-center justify-center text-white text-xs">Video</div>
-                      )}
-                      {item.type === 'text' && (
-                        <div className="w-full aspect-square bg-gray-50 rounded-lg flex items-center justify-center p-2 text-xs text-gray-600 overflow-hidden">
-                          {item.body?.slice(0, 60)}...
-                        </div>
-                      )}
-
-                      {/* Edit button for text slides */}
-                      {item.type === 'text' && (
-                        <button
-                          onClick={() => setTextSlideEditor({ mode: 'edit', mediaId: item.id, body: item.body ?? '' })}
-                          className="absolute bottom-1 left-1 bg-white/90 text-gray-700 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                        >
-                          <Pencil size={12} />
-                        </button>
-                      )}
-
-                      {/* Delete button */}
-                      <button
-                        onClick={() => handleDeleteMedia(item.id)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* File preview before upload */}
-              {pendingFile && (
-                <div className="border border-indigo-200 rounded-xl p-3 bg-indigo-50/30 mb-3">
-                  {pendingFile.type === 'image' ? (
-                    <img src={pendingFile.previewUrl} alt="Preview" className="max-h-48 rounded-lg object-contain mx-auto" />
-                  ) : (
-                    <video src={pendingFile.previewUrl} className="max-h-48 rounded-lg mx-auto" controls />
+                      <Pencil size={14} />
+                      Edit
+                    </button>
+                  </div>
+                  {savedAnalysis && (
+                    <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap mb-3">{savedAnalysis}</p>
                   )}
-                  <p className="text-xs text-gray-500 mt-2 text-center">{pendingFile.file.name} ({(pendingFile.file.size / 1024 / 1024).toFixed(1)} MB)</p>
-                  <div className="flex justify-end gap-2 mt-2">
-                    <button onClick={cancelFileUpload} className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50">
-                      Cancel
-                    </button>
-                    <button onClick={confirmFileUpload} disabled={uploading} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
-                      {uploading ? 'Uploading...' : 'Upload'}
-                    </button>
+                  {media.length > 0 && (
+                    <PostCarousel media={media} />
+                  )}
+                </>
+              ) : (
+                <>
+                  <h2 className="font-semibold text-gray-900 text-sm mb-1">{savedAnalysis || media.length > 0 ? 'Edit Analysis' : 'Your Explanation'}</h2>
+                  <p className="text-gray-400 text-xs mb-4">Add your reasoning, screenshots, or notes. The trade data above is verified and can&apos;t be changed.</p>
+
+                  {/* Empty state */}
+                  {!analysis && !savedAnalysis && media.length === 0 && !textSlideEditor && !pendingFile && (
+                    <div className="text-center py-6 mb-3">
+                      <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <FileText size={20} className="text-indigo-400" />
+                      </div>
+                      <p className="text-gray-900 font-medium text-sm">Tell others about this trade</p>
+                      <p className="text-gray-400 text-xs mt-1">Add analysis, screenshots, or text slides to explain your thinking</p>
+                    </div>
+                  )}
+
+                  {/* Analysis textarea */}
+                  <div className="mb-3">
+                    <textarea
+                      value={analysis}
+                      onChange={e => setAnalysis(e.target.value)}
+                      rows={4}
+                      placeholder="Why did you take this trade? What did you see?"
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                    />
                   </div>
-                </div>
-              )}
 
-              {/* Inline text slide editor */}
-              {textSlideEditor && (
-                <div className="border border-indigo-200 rounded-xl p-3 bg-indigo-50/30 mb-3">
-                  <textarea
-                    value={textSlideEditor.body}
-                    onChange={e => setTextSlideEditor(prev => prev ? { ...prev, body: e.target.value } : prev)}
-                    rows={4}
-                    placeholder="Write your text slide content..."
-                    className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                    autoFocus
-                  />
-                  <div className="flex justify-end gap-2 mt-2">
-                    <button onClick={() => setTextSlideEditor(null)} className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50">
-                      Cancel
+                  {/* Media grid with drag-to-reorder */}
+                  {media.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      {[...media].sort((a, b) => a.sort_order - b.sort_order).map((item, index) => (
+                        <div
+                          key={item.id}
+                          className={`relative group cursor-grab active:cursor-grabbing ${dragOverIndex === index ? 'ring-2 ring-indigo-400 rounded-lg' : ''}`}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, index)}
+                          onDragOver={(e) => handleDragOver(e, index)}
+                          onDragEnd={handleDragEnd}
+                        >
+                          {/* Drag handle */}
+                          <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-70 text-white z-10 drop-shadow">
+                            <GripVertical size={14} />
+                          </div>
+
+                          {item.type === 'image' && item.url && (
+                            <img src={item.url} alt="" className="w-full aspect-square object-cover rounded-lg" />
+                          )}
+                          {item.type === 'video' && (
+                            <div className="w-full aspect-square bg-gray-900 rounded-lg flex items-center justify-center text-white text-xs">Video</div>
+                          )}
+                          {item.type === 'text' && (
+                            <div className="w-full aspect-square bg-gray-50 rounded-lg flex items-center justify-center p-2 text-xs text-gray-600 overflow-hidden">
+                              {item.body?.slice(0, 60)}...
+                            </div>
+                          )}
+
+                          {/* Edit button for text slides */}
+                          {item.type === 'text' && (
+                            <button
+                              onClick={() => setTextSlideEditor({ mode: 'edit', mediaId: item.id, body: item.body ?? '' })}
+                              className="absolute bottom-1 left-1 bg-white/90 text-gray-700 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                            >
+                              <Pencil size={12} />
+                            </button>
+                          )}
+
+                          {/* Delete button */}
+                          <button
+                            onClick={() => handleDeleteMedia(item.id)}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* File preview before upload */}
+                  {pendingFile && (
+                    <div className="border border-indigo-200 rounded-xl p-3 bg-indigo-50/30 mb-3">
+                      {pendingFile.type === 'image' ? (
+                        <img src={pendingFile.previewUrl} alt="Preview" className="max-h-48 rounded-lg object-contain mx-auto" />
+                      ) : (
+                        <video src={pendingFile.previewUrl} className="max-h-48 rounded-lg mx-auto" controls />
+                      )}
+                      <p className="text-xs text-gray-500 mt-2 text-center">{pendingFile.file.name} ({(pendingFile.file.size / 1024 / 1024).toFixed(1)} MB)</p>
+                      <div className="flex justify-end gap-2 mt-2">
+                        <button onClick={cancelFileUpload} className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50">
+                          Cancel
+                        </button>
+                        <button onClick={confirmFileUpload} disabled={uploading} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
+                          {uploading ? 'Uploading...' : 'Upload'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Inline text slide editor */}
+                  {textSlideEditor && (
+                    <div className="border border-indigo-200 rounded-xl p-3 bg-indigo-50/30 mb-3">
+                      <textarea
+                        value={textSlideEditor.body}
+                        onChange={e => setTextSlideEditor(prev => prev ? { ...prev, body: e.target.value } : prev)}
+                        rows={4}
+                        placeholder="Write your text slide content..."
+                        className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                        autoFocus
+                      />
+                      <div className="flex justify-end gap-2 mt-2">
+                        <button onClick={() => setTextSlideEditor(null)} className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50">
+                          Cancel
+                        </button>
+                        <button onClick={saveTextSlide} disabled={savingSlide || !textSlideEditor.body.trim()} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
+                          {savingSlide ? 'Saving...' : textSlideEditor.mode === 'add' ? 'Add Slide' : 'Save Changes'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Add content buttons */}
+                  {(() => {
+                    const imgCount = media.filter(m => m.type === 'image').length
+                    const vidCount = media.filter(m => m.type === 'video').length
+                    const canAddImage = imgCount < 5
+                    const canAddVideo = vidCount < 1
+                    const canAddFile = canAddImage || canAddVideo
+                    return (
+                  <div className="flex flex-col gap-2 pt-3 border-t border-gray-100">
+                    {(imgCount > 0 || vidCount > 0) && (
+                      <p className="text-xs text-gray-400">{imgCount}/5 images, {vidCount}/1 video</p>
+                    )}
+                    <div className="flex gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept={canAddImage && canAddVideo ? 'image/*,video/*' : canAddVideo ? 'video/*' : 'image/*'}
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading || !!pendingFile || !canAddFile}
+                      className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                    >
+                      <ImagePlus size={16} />
+                      {canAddFile ? 'Add Image/Video' : 'Limit reached'}
                     </button>
-                    <button onClick={saveTextSlide} disabled={savingSlide || !textSlideEditor.body.trim()} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
-                      {savingSlide ? 'Saving...' : textSlideEditor.mode === 'add' ? 'Add Slide' : 'Save Changes'}
+                    <button
+                      onClick={() => setTextSlideEditor({ mode: 'add', body: '' })}
+                      disabled={!!textSlideEditor}
+                      className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                    >
+                      <Type size={16} />
+                      Add Text Slide
                     </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                    )
+                  })()}
 
-              {/* Add content buttons */}
-              {(() => {
-                const imgCount = media.filter(m => m.type === 'image').length
-                const vidCount = media.filter(m => m.type === 'video').length
-                const canAddImage = imgCount < 5
-                const canAddVideo = vidCount < 1
-                const canAddFile = canAddImage || canAddVideo
-                return (
-              <div className="flex flex-col gap-2 pt-3 border-t border-gray-100">
-                {(imgCount > 0 || vidCount > 0) && (
-                  <p className="text-xs text-gray-400">{imgCount}/5 images, {vidCount}/1 video</p>
-                )}
-                <div className="flex gap-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept={canAddImage && canAddVideo ? 'image/*,video/*' : canAddVideo ? 'video/*' : 'image/*'}
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading || !!pendingFile || !canAddFile}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                >
-                  <ImagePlus size={16} />
-                  {canAddFile ? 'Add Image/Video' : 'Limit reached'}
-                </button>
-                <button
-                  onClick={() => setTextSlideEditor({ mode: 'add', body: '' })}
-                  disabled={!!textSlideEditor}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                >
-                  <Type size={16} />
-                  Add Text Slide
-                </button>
-                </div>
-              </div>
-                )
-              })()}
-
-              {/* Publish button — enabled when there's any content */}
-              {(analysis.trim() || media.length > 0) && (
-                <button
-                  onClick={saveAnalysis}
-                  disabled={savingAnalysis}
-                  className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 transition-colors"
-                >
-                  {savingAnalysis ? 'Publishing...' : 'Publish Analysis'}
-                </button>
+                  {/* Publish / Save button */}
+                  <div className="flex gap-2 mt-4">
+                    {editing && (
+                      <button
+                        onClick={() => { setAnalysis(savedAnalysis); setEditing(false) }}
+                        className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    {(analysis.trim() || media.length > 0) && (
+                      <button
+                        onClick={saveAnalysis}
+                        disabled={savingAnalysis}
+                        className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+                      >
+                        {savingAnalysis ? 'Saving...' : editing ? 'Save Changes' : 'Publish Analysis'}
+                      </button>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           )}
