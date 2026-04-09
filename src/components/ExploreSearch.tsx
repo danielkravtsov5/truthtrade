@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { Search, X } from 'lucide-react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { Search, X, ChevronRight, ChevronDown, Folder, FolderOpen } from 'lucide-react'
 import Link from 'next/link'
-import { ALL_SYMBOLS } from '@/lib/asset-class'
+import { ALL_SYMBOLS, type SymbolEntry } from '@/lib/asset-class'
 
 interface UserResult {
   id: string
@@ -12,11 +12,23 @@ interface UserResult {
   avatar_url: string | null
 }
 
+const CATEGORY_ORDER = ['Crypto', 'Stocks', 'Forex'] as const
+
+function groupByCategory(symbols: SymbolEntry[]): Record<string, SymbolEntry[]> {
+  const groups: Record<string, SymbolEntry[]> = {}
+  for (const s of symbols) {
+    if (!groups[s.category]) groups[s.category] = []
+    groups[s.category].push(s)
+  }
+  return groups
+}
+
 export default function ExploreSearch() {
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(false)
   const [users, setUsers] = useState<UserResult[]>([])
   const [searching, setSearching] = useState(false)
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
@@ -30,6 +42,21 @@ export default function ExploreSearch() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  // Reset expanded folders when query changes
+  useEffect(() => {
+    if (query.trim().length > 0) {
+      // Auto-expand all folders that have matches
+      const q = query.toUpperCase().trim()
+      const matched = new Set<string>()
+      for (const s of ALL_SYMBOLS) {
+        if (s.symbol.includes(q)) matched.add(s.category)
+      }
+      setExpandedFolders(matched)
+    } else {
+      setExpandedFolders(new Set())
+    }
+  }, [query])
 
   const searchUsers = useCallback(async (q: string) => {
     if (q.length < 2) { setUsers([]); return }
@@ -50,12 +77,33 @@ export default function ExploreSearch() {
     debounceRef.current = setTimeout(() => searchUsers(value), 300)
   }
 
-  const q = query.toUpperCase().trim()
-  const symbolResults = q.length > 0
-    ? ALL_SYMBOLS.filter(s => s.symbol.includes(q)).slice(0, 10)
-    : []
+  function toggleFolder(category: string) {
+    setExpandedFolders(prev => {
+      const next = new Set(prev)
+      if (next.has(category)) {
+        next.delete(category)
+      } else {
+        next.add(category)
+      }
+      return next
+    })
+  }
 
-  const showDropdown = focused && query.length > 0 && (symbolResults.length > 0 || users.length > 0 || searching)
+  const q = query.toUpperCase().trim()
+
+  // In search mode: filter symbols. In browse mode: show all.
+  const filteredSymbols = useMemo(() => {
+    if (q.length > 0) {
+      return ALL_SYMBOLS.filter(s => s.symbol.includes(q))
+    }
+    return ALL_SYMBOLS
+  }, [q])
+
+  const grouped = useMemo(() => groupByCategory(filteredSymbols), [filteredSymbols])
+
+  const showDropdown = focused && (
+    query.length === 0 || filteredSymbols.length > 0 || users.length > 0 || searching
+  )
 
   return (
     <div ref={wrapperRef} className="relative mb-4">
@@ -78,23 +126,44 @@ export default function ExploreSearch() {
 
       {showDropdown && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-80 overflow-y-auto">
-          {/* Symbol results */}
-          {symbolResults.length > 0 && (
-            <div>
-              <p className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Symbols</p>
-              {symbolResults.map(({ symbol, category }) => (
-                <Link
-                  key={symbol}
-                  href={`/explore?symbol=${symbol}`}
-                  onClick={() => setFocused(false)}
-                  className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 transition-colors"
+          {/* Symbol folders */}
+          {CATEGORY_ORDER.filter(cat => grouped[cat]?.length > 0).map(category => {
+            const symbols = grouped[category]
+            const isExpanded = expandedFolders.has(category)
+            return (
+              <div key={category}>
+                <button
+                  onClick={() => toggleFolder(category)}
+                  className="flex items-center gap-2 w-full px-3 py-2 hover:bg-gray-50 transition-colors"
                 >
-                  <span className="text-sm font-medium text-gray-900">{symbol}</span>
-                  <span className="text-xs text-gray-400">{category}</span>
-                </Link>
-              ))}
-            </div>
-          )}
+                  {isExpanded
+                    ? <ChevronDown size={14} className="text-gray-400 shrink-0" />
+                    : <ChevronRight size={14} className="text-gray-400 shrink-0" />
+                  }
+                  {isExpanded
+                    ? <FolderOpen size={14} className="text-indigo-500 shrink-0" />
+                    : <Folder size={14} className="text-indigo-500 shrink-0" />
+                  }
+                  <span className="text-sm font-semibold text-gray-700">{category}</span>
+                  <span className="text-xs text-gray-400 ml-auto">{symbols.length}</span>
+                </button>
+                {isExpanded && (
+                  <div>
+                    {symbols.map(({ symbol }) => (
+                      <Link
+                        key={symbol}
+                        href={`/explore?symbol=${symbol}`}
+                        onClick={() => setFocused(false)}
+                        className="flex items-center px-3 py-1.5 pl-10 hover:bg-gray-50 transition-colors"
+                      >
+                        <span className="text-sm text-gray-900">{symbol}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
 
           {/* User results */}
           {users.length > 0 && (
@@ -126,7 +195,7 @@ export default function ExploreSearch() {
             <p className="px-3 py-2 text-xs text-gray-400">Searching traders...</p>
           )}
 
-          {query.length >= 2 && !searching && users.length === 0 && symbolResults.length === 0 && (
+          {query.length >= 2 && !searching && users.length === 0 && filteredSymbols.length === 0 && (
             <p className="px-3 py-3 text-sm text-gray-400 text-center">No results found</p>
           )}
         </div>
