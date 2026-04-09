@@ -64,7 +64,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { data, error } = await supabase
     .from('posts')
     .select(`
-      id, analysis, created_at, updated_at,
+      id, user_id, analysis, created_at, updated_at,
       user:users!posts_user_id_fkey(id, username, display_name, avatar_url),
       trade:trades(id, ticker, side, quantity, entry_price, exit_price, pnl, pnl_pct, opened_at, closed_at, broker),
       media:post_media(id, type, url, body, sort_order),
