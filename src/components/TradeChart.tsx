@@ -1,15 +1,16 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Trade } from '@/types'
+import { Trade, NormalizedFill } from '@/types'
 import {
   createChart,
   CandlestickSeries,
   LineSeries,
   ColorType,
   createSeriesMarkers,
+  LineStyle,
 } from 'lightweight-charts'
-import type { IChartApi, CandlestickData, LineData, Time, SeriesMarker } from 'lightweight-charts'
+import type { IChartApi, ISeriesApi, CandlestickData, LineData, Time, SeriesMarker } from 'lightweight-charts'
 
 interface TradeChartProps {
   trade: Trade
@@ -31,6 +32,48 @@ const TIMEFRAMES = [
   { label: '4h', value: '4h' },
   { label: '1d', value: '1d' },
 ]
+
+function getExitPrices(trade: Trade): number[] {
+  const fills = (trade.raw_data?.fills as NormalizedFill[] | undefined)
+  if (!fills || fills.length === 0) return [trade.exit_price]
+  const exitSide = trade.side === 'long' ? 'sell' : 'buy'
+  const exitFills = fills.filter(f => f.side === exitSide)
+  if (exitFills.length === 0) return [trade.exit_price]
+  return exitFills.map(f => f.price)
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function addPriceLines(series: any, trade: Trade) {
+  const isProfit = trade.pnl >= 0
+  const exitPrices = getExitPrices(trade)
+
+  // Entry price line — blue
+  series.createPriceLine({
+    price: trade.entry_price,
+    color: '#3b82f6',
+    lineWidth: 1,
+    lineStyle: LineStyle.Dashed,
+    axisLabelVisible: true,
+    title: `Entry`,
+    axisLabelColor: '#3b82f6',
+    axisLabelTextColor: '#ffffff',
+  })
+
+  // Exit price lines — green/red
+  const exitColor = isProfit ? '#10b981' : '#ef4444'
+  exitPrices.forEach((price, i) => {
+    series.createPriceLine({
+      price,
+      color: exitColor,
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      axisLabelVisible: true,
+      title: exitPrices.length > 1 ? `Exit ${i + 1}` : `Exit`,
+      axisLabelColor: exitColor,
+      axisLabelTextColor: '#ffffff',
+    })
+  })
+}
 
 export default function TradeChart({ trade }: TradeChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -133,6 +176,7 @@ export default function TradeChart({ trade }: TradeChartProps) {
 
           candleSeries.setData(candleData)
           createSeriesMarkers(candleSeries, markers)
+          addPriceLines(candleSeries, trade)
         } else {
           const lineSeries = chart.addSeries(LineSeries, {
             color: '#6366f1',
@@ -146,6 +190,7 @@ export default function TradeChart({ trade }: TradeChartProps) {
 
           lineSeries.setData(lineData)
           createSeriesMarkers(lineSeries, markers)
+          addPriceLines(lineSeries, trade)
         }
 
         chart.timeScale().fitContent()

@@ -7,17 +7,6 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useState, useCallback } from 'react'
 import PostCarousel from './PostCarousel'
-import PriceArrow from './PriceArrow'
-import type { NormalizedFill } from '@/types'
-
-function getExitPrices(trade: { side: 'long' | 'short'; exit_price: number; raw_data: Record<string, unknown> }): number[] {
-  const fills = trade.raw_data?.fills as NormalizedFill[] | undefined
-  if (!fills || fills.length === 0) return [trade.exit_price]
-  const exitSide = trade.side === 'long' ? 'sell' : 'buy'
-  const exitFills = fills.filter(f => f.side === exitSide)
-  if (exitFills.length === 0) return [trade.exit_price]
-  return exitFills.map(f => f.price)
-}
 
 const TradeChart = dynamic(() => import('./TradeChart'), { ssr: false })
 
@@ -122,23 +111,10 @@ export default function TradeCard({ post, compact = false, currentUserId, onDele
               <div className="text-sm">{isProfit ? '+' : ''}{trade.pnl_pct.toFixed(2)}%</div>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-gray-500 text-xs">
-            <PriceArrow
-              entryPrice={trade.entry_price}
-              exitPrices={getExitPrices(trade)}
-              side={trade.side}
-              isProfit={isProfit}
-            />
-            <div className="flex flex-col gap-0.5">
-              <span>Entry ${trade.entry_price.toFixed(4)}</span>
-              {getExitPrices(trade).length > 1 ? (
-                getExitPrices(trade).map((p, i) => (
-                  <span key={i}>Exit {i + 1} ${p.toFixed(4)}</span>
-                ))
-              ) : (
-                <span>Exit ${trade.exit_price.toFixed(4)}</span>
-              )}
-            </div>
+          <div className="flex items-center gap-1 text-gray-500 text-xs">
+            <span>Entry ${trade.entry_price.toFixed(4)}</span>
+            <span>→</span>
+            <span>Exit ${trade.exit_price.toFixed(4)}</span>
           </div>
         </div>
       </Link>
