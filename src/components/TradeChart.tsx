@@ -171,11 +171,12 @@ export default function TradeChart({ trade }: TradeChartProps) {
 
         // Dashed price level lines (no axis labels — price arrows handle that)
         const isProfit = trade.pnl >= 0
-        const exitColor = isProfit ? '#10b981' : '#ef4444'
+        const entryColor = '#9ca3af'  // neutral gray
+        const exitColor = isProfit ? '#10b981' : '#ef4444'  // green TP / red SL
 
         activeSeries.createPriceLine({
           price: trade.entry_price,
-          color: '#3b82f6',
+          color: entryColor,
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: false,
@@ -211,7 +212,7 @@ export default function TradeChart({ trade }: TradeChartProps) {
             newBarArrows.push({
               x: entryBarX,
               y: entryBarY,
-              color: '#ef4444',
+              color: entryColor,
               label: `${trade.side === 'short' ? '-' : ''}${trade.quantity}\n${trade.side === 'long' ? 'Long' : 'Short'}`,
               direction: trade.side === 'long' ? 'up' : 'down',
             })
@@ -224,7 +225,7 @@ export default function TradeChart({ trade }: TradeChartProps) {
             // For short: arrow below pointing UP to exit price
             // For long: arrow above pointing DOWN to exit price
             const exitLabel = isProfit ? 'TP' : 'SL'
-            const exitArrowColor = isProfit ? '#a855f7' : '#ef4444'
+            const exitArrowColor = exitColor
             newBarArrows.push({
               x: exitBarX,
               y: exitBarY,
@@ -239,7 +240,7 @@ export default function TradeChart({ trade }: TradeChartProps) {
           if (entryPriceY !== null) {
             newPriceArrows.push({
               y: entryPriceY,
-              color: '#ef4444',
+              color: entryColor,
               label: `$${trade.entry_price.toFixed(2)}`,
               price: trade.entry_price,
             })
@@ -247,7 +248,7 @@ export default function TradeChart({ trade }: TradeChartProps) {
 
           // --- Arrow 4: Exit price level (right side) ---
           const exitPriceY = activeSeries.priceToCoordinate(trade.exit_price)
-          const exitPriceColor = isProfit ? '#a855f7' : '#ef4444'
+          const exitPriceColor = exitColor
           if (exitPriceY !== null) {
             newPriceArrows.push({
               y: exitPriceY,
