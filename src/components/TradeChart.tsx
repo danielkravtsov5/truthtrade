@@ -223,11 +223,13 @@ export default function TradeChart({ trade }: TradeChartProps) {
           if (exitBarX !== null && exitBarY !== null) {
             // For short: arrow below pointing UP to exit price
             // For long: arrow above pointing DOWN to exit price
+            const exitLabel = isProfit ? 'TP' : 'SL'
+            const exitArrowColor = isProfit ? '#a855f7' : '#ef4444'
             newBarArrows.push({
               x: exitBarX,
               y: exitBarY,
-              color: '#a855f7',
-              label: `TP\n+${trade.quantity}`,
+              color: exitArrowColor,
+              label: `${exitLabel}\n${isProfit ? '+' : ''}${trade.quantity}`,
               direction: trade.side === 'long' ? 'down' : 'up',
             })
           }
@@ -245,10 +247,11 @@ export default function TradeChart({ trade }: TradeChartProps) {
 
           // --- Arrow 4: Exit price level (right side) ---
           const exitPriceY = activeSeries.priceToCoordinate(trade.exit_price)
+          const exitPriceColor = isProfit ? '#a855f7' : '#ef4444'
           if (exitPriceY !== null) {
             newPriceArrows.push({
               y: exitPriceY,
-              color: '#a855f7',
+              color: exitPriceColor,
               label: `$${trade.exit_price.toFixed(2)}`,
               price: trade.exit_price,
             })
