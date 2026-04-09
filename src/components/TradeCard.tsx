@@ -2,13 +2,14 @@
 
 import { Post } from '@/types'
 import { formatDistanceToNow } from '@/lib/utils'
-import { Heart, MessageCircle, Repeat2, Share2, CheckCircle, Trash2, Pencil } from 'lucide-react'
+import { Heart, MessageCircle, Repeat2, Share2, CheckCircle, Trash2, Pencil, Image } from 'lucide-react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useState, useCallback } from 'react'
 import PostCarousel from './PostCarousel'
 
 const TradeChart = dynamic(() => import('./TradeChart'), { ssr: false })
+const ShareableTradeCard = dynamic(() => import('./ShareableTradeCard'), { ssr: false })
 
 interface TradeCardProps {
   post: Post
@@ -21,6 +22,7 @@ export default function TradeCard({ post, compact = false, currentUserId, onDele
   const [liked, setLiked] = useState(post.user_has_liked ?? false)
   const [likeCount, setLikeCount] = useState(post.like_count ?? 0)
   const [deleting, setDeleting] = useState(false)
+  const [showShareCard, setShowShareCard] = useState(false)
 
   const isAdmin = currentUserId === process.env.NEXT_PUBLIC_ADMIN_USER_ID
   const isOwner = currentUserId === post.user_id
@@ -174,6 +176,13 @@ export default function TradeCard({ post, compact = false, currentUserId, onDele
           <Repeat2 size={18} />
         </button>
         <button
+          onClick={() => setShowShareCard(true)}
+          className="flex items-center gap-1.5 hover:text-indigo-500 transition-colors"
+          title="Create share card"
+        >
+          <Image size={18} />
+        </button>
+        <button
           onClick={async () => {
             const url = `${window.location.origin}/trade/${post.id}`
             const text = `${trade.ticker} ${trade.side} ${trade.pnl >= 0 ? '+' : ''}$${trade.pnl.toFixed(2)} (${trade.pnl >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(2)}%) — verified on TruthTrade`
@@ -189,6 +198,14 @@ export default function TradeCard({ post, compact = false, currentUserId, onDele
           <Share2 size={18} />
         </button>
       </div>
+
+      {showShareCard && (
+        <ShareableTradeCard
+          trade={trade}
+          username={user.username}
+          onClose={() => setShowShareCard(false)}
+        />
+      )}
     </div>
   )
 }
