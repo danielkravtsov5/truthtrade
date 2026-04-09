@@ -41,19 +41,20 @@ export default function TradeDetailPage() {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   useEffect(() => {
-    fetch(`/api/posts/${id}`).then(r => r.json()).then(data => {
+    const supabase = createClient()
+
+    Promise.all([
+      fetch(`/api/posts/${id}`).then(r => r.json()),
+      supabase.auth.getUser(),
+    ]).then(([data, { data: { user } }]) => {
       setPost(data)
       setAnalysis(data.analysis ?? '')
       setSavedAnalysis(data.analysis ?? '')
       setComments(data.comments ?? [])
       setMedia(data.media ?? [])
+      if (user && data.user_id === user.id) setIsOwn(true)
     })
-
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user && post?.user_id === user.id) setIsOwn(true)
-    })
-  }, [id, post?.user_id])
+  }, [id])
 
   async function submitComment(e: React.FormEvent) {
     e.preventDefault()
