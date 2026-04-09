@@ -47,32 +47,35 @@ function addPriceLines(series: any, trade: Trade) {
   const isProfit = trade.pnl >= 0
   const exitPrices = getExitPrices(trade)
 
-  // Entry price line — blue
+  // Entry price line — blue dashed, no axis label (arrow overlay handles labels)
   series.createPriceLine({
     price: trade.entry_price,
     color: '#3b82f6',
     lineWidth: 1,
     lineStyle: LineStyle.Dashed,
-    axisLabelVisible: true,
-    title: `Entry`,
-    axisLabelColor: '#3b82f6',
-    axisLabelTextColor: '#ffffff',
+    axisLabelVisible: false,
+    title: '',
   })
 
-  // Exit price lines — green/red
+  // Exit price lines — green/red dashed
   const exitColor = isProfit ? '#10b981' : '#ef4444'
-  exitPrices.forEach((price, i) => {
+  exitPrices.forEach((price) => {
     series.createPriceLine({
       price,
       color: exitColor,
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: exitPrices.length > 1 ? `Exit ${i + 1}` : `Exit`,
-      axisLabelColor: exitColor,
-      axisLabelTextColor: '#ffffff',
+      axisLabelVisible: false,
+      title: '',
     })
   })
+}
+
+interface ArrowMarker {
+  price: number
+  y: number
+  color: string
+  label: string
 }
 
 export default function TradeChart({ trade }: TradeChartProps) {
@@ -81,6 +84,7 @@ export default function TradeChart({ trade }: TradeChartProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [interval, setInterval] = useState<string | null>(null)
+  const [arrows, setArrows] = useState<ArrowMarker[]>([])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -155,6 +159,8 @@ export default function TradeChart({ trade }: TradeChartProps) {
 
         // Use candlestick if we have OHLC data, otherwise line
         const hasOhlc = candles.some(c => c.high !== c.low)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let activeSeries: any
 
         if (hasOhlc) {
           const candleSeries = chart.addSeries(CandlestickSeries, {
@@ -177,6 +183,7 @@ export default function TradeChart({ trade }: TradeChartProps) {
           candleSeries.setData(candleData)
           createSeriesMarkers(candleSeries, markers)
           addPriceLines(candleSeries, trade)
+          activeSeries = candleSeries
         } else {
           const lineSeries = chart.addSeries(LineSeries, {
             color: '#6366f1',
@@ -191,9 +198,47 @@ export default function TradeChart({ trade }: TradeChartProps) {
           lineSeries.setData(lineData)
           createSeriesMarkers(lineSeries, markers)
           addPriceLines(lineSeries, trade)
+          activeSeries = lineSeries
         }
 
         chart.timeScale().fitContent()
+
+        // Compute arrow Y positions after chart renders
+        const computeArrows = () => {
+          if (!activeSeries) return
+
+          const isProfit = trade.pnl >= 0
+          const exitPrices = getExitPrices(trade)
+          const exitColor = isProfit ? '#10b981' : '#ef4444'
+          const newArrows: ArrowMarker[] = []
+
+          const entryY = activeSeries.priceToCoordinate(trade.entry_price)
+          if (entryY !== null) {
+            newArrows.push({ price: trade.entry_price, y: entryY, color: '#3b82f6', label: 'Entry' })
+          }
+
+          exitPrices.forEach((price, i) => {
+            const y = activeSeries.priceToCoordinate(price)
+            if (y !== null) {
+              newArrows.push({
+                price,
+                y,
+                color: exitColor,
+                label: exitPrices.length > 1 ? `Exit ${i + 1}` : 'Exit',
+              })
+            }
+          })
+
+          setArrows(newArrows)
+        }
+
+        // Compute after render settles
+        requestAnimationFrame(() => {
+          computeArrows()
+          // Recompute if visible range changes (zoom/scroll)
+          chart.timeScale().subscribeVisibleLogicalRangeChange(computeArrows)
+        })
+
         setLoading(false)
 
         return () => {
@@ -245,7 +290,25 @@ export default function TradeChart({ trade }: TradeChartProps) {
           No chart data for this timeframe
         </div>
       ) : (
-        <div ref={containerRef} className="w-full" style={{ minHeight: 220 }} />
+        <div className="relative">
+          <div ref={containerRef} className="w-full" style={{ minHeight: 220 }} />
+          {/* Arrow markers on right edge */}
+          {arrows.map((arrow, i) => (
+            <div
+              key={i}
+              className="absolute flex items-center gap-1 pointer-events-none"
+              style={{ top: arrow.y - 10, right: 60, zIndex: 5 }}
+            >
+              <span className="text-[10px] font-bold whitespace-nowrap" style={{ color: arrow.color }}>
+                {arrow.label}
+              </span>
+              {/* Triangle arrow pointing right → at the price level */}
+              <svg width="8" height="12" viewBox="0 0 8 12">
+                <polygon points="0,0 8,6 0,12" fill={arrow.color} />
+              </svg>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )
