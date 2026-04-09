@@ -142,6 +142,8 @@ export default function TradeChart({ trade }: TradeChartProps) {
             borderDownColor: '#ef4444',
             wickUpColor: '#10b981',
             wickDownColor: '#ef4444',
+            lastValueVisible: false,
+            priceLineVisible: false,
           })
 
           const candleData: CandlestickData[] = candles.map(c => ({
@@ -158,6 +160,8 @@ export default function TradeChart({ trade }: TradeChartProps) {
           const lineSeries = chart.addSeries(LineSeries, {
             color: '#6366f1',
             lineWidth: 2,
+            lastValueVisible: false,
+            priceLineVisible: false,
           })
 
           const lineData: LineData[] = candles.map(c => ({
