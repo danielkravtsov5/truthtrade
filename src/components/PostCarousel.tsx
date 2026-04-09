@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { PostMedia } from '@/types'
 
 interface PostCarouselProps {
@@ -59,6 +60,28 @@ export default function PostCarousel({ media }: PostCarouselProps) {
           </div>
         ))}
       </div>
+
+      {/* Navigation arrows */}
+      {sorted.length > 1 && (
+        <>
+          {active > 0 && (
+            <button
+              onClick={() => scrollTo(active - 1)}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center transition-colors"
+            >
+              <ChevronLeft size={18} />
+            </button>
+          )}
+          {active < sorted.length - 1 && (
+            <button
+              onClick={() => scrollTo(active + 1)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center transition-colors"
+            >
+              <ChevronRight size={18} />
+            </button>
+          )}
+        </>
+      )}
 
       {/* Dot indicators */}
       {sorted.length > 1 && (

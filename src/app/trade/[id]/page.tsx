@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import TradeCard from '@/components/TradeCard'
 import { Post, Comment, PostMedia } from '@/types'
 import { createClient } from '@/lib/supabase'
@@ -10,6 +10,7 @@ import { formatDistanceToNow } from '@/lib/utils'
 
 export default function TradeDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const router = useRouter()
   const [post, setPost] = useState<Post | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [commentBody, setCommentBody] = useState('')
@@ -79,9 +80,7 @@ export default function TradeDetailPage() {
       body: JSON.stringify({ analysis }),
     })
     if (res.ok) {
-      const updated = await res.json()
-      setPost(prev => prev ? { ...prev, analysis: updated.analysis } : prev)
-      setSavedAnalysis(updated.analysis ?? '')
+      router.push('/explore')
     }
     setSavingAnalysis(false)
   }
@@ -243,16 +242,6 @@ export default function TradeDetailPage() {
                   placeholder="Why did you take this trade? What did you see?"
                   className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                 />
-                {analysis !== savedAnalysis && (
-                  <div className="flex gap-2 mt-2">
-                    <button onClick={saveAnalysis} disabled={savingAnalysis} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
-                      {savingAnalysis ? 'Saving...' : 'Save'}
-                    </button>
-                    <button onClick={() => setAnalysis(savedAnalysis)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50">
-                      Cancel
-                    </button>
-                  </div>
-                )}
               </div>
 
               {/* Media grid with drag-to-reorder */}
@@ -388,6 +377,17 @@ export default function TradeDetailPage() {
               </div>
                 )
               })()}
+
+              {/* Publish button — enabled when there's any content */}
+              {(analysis.trim() || media.length > 0) && (
+                <button
+                  onClick={saveAnalysis}
+                  disabled={savingAnalysis}
+                  className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+                >
+                  {savingAnalysis ? 'Publishing...' : 'Publish Analysis'}
+                </button>
+              )}
             </div>
           )}
 
