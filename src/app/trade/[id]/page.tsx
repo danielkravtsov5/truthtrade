@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import TradeCard from '@/components/TradeCard'
 import { Post, Comment, PostMedia } from '@/types'
 import { createClient } from '@/lib/supabase'
-import { Send, ImagePlus, FileText, X } from 'lucide-react'
+import { Send, ImagePlus, X, GripVertical, Pencil, Type, FileText } from 'lucide-react'
 import { formatDistanceToNow } from '@/lib/utils'
 
 export default function TradeDetailPage() {
@@ -14,17 +14,37 @@ export default function TradeDetailPage() {
   const [comments, setComments] = useState<Comment[]>([])
   const [commentBody, setCommentBody] = useState('')
   const [analysis, setAnalysis] = useState('')
+  const [savedAnalysis, setSavedAnalysis] = useState('')
   const [isOwn, setIsOwn] = useState(false)
-  const [editingAnalysis, setEditingAnalysis] = useState(false)
   const [savingAnalysis, setSavingAnalysis] = useState(false)
   const [media, setMedia] = useState<PostMedia[]>([])
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Text slide editor state
+  const [textSlideEditor, setTextSlideEditor] = useState<{
+    mode: 'add' | 'edit'
+    mediaId?: string
+    body: string
+  } | null>(null)
+  const [savingSlide, setSavingSlide] = useState(false)
+
+  // File preview state
+  const [pendingFile, setPendingFile] = useState<{
+    file: File
+    previewUrl: string
+    type: 'image' | 'video'
+  } | null>(null)
+
+  // Drag reorder state
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
   useEffect(() => {
     fetch(`/api/posts/${id}`).then(r => r.json()).then(data => {
       setPost(data)
       setAnalysis(data.analysis ?? '')
+      setSavedAnalysis(data.analysis ?? '')
       setComments(data.comments ?? [])
       setMedia(data.media ?? [])
     })
@@ -60,18 +80,25 @@ export default function TradeDetailPage() {
     if (res.ok) {
       const updated = await res.json()
       setPost(prev => prev ? { ...prev, analysis: updated.analysis } : prev)
-      setEditingAnalysis(false)
+      setSavedAnalysis(updated.analysis ?? '')
     }
     setSavingAnalysis(false)
   }
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setUploading(true)
+    const previewUrl = URL.createObjectURL(file)
+    const type = file.type.startsWith('video/') ? 'video' as const : 'image' as const
+    setPendingFile({ file, previewUrl, type })
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
+  async function confirmFileUpload() {
+    if (!pendingFile) return
+    setUploading(true)
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', pendingFile.file)
     formData.append('sort_order', String(media.length))
 
     const res = await fetch(`/api/posts/${id}/media`, { method: 'POST', body: formData })
@@ -80,26 +107,90 @@ export default function TradeDetailPage() {
       setMedia(prev => [...prev, newMedia])
       setPost(prev => prev ? { ...prev, media: [...(prev.media ?? []), newMedia] } : prev)
     }
+    URL.revokeObjectURL(pendingFile.previewUrl)
+    setPendingFile(null)
     setUploading(false)
-    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  async function handleAddTextSlide() {
-    const body = prompt('Enter text for the slide:')
-    if (!body?.trim()) return
-    setUploading(true)
+  function cancelFileUpload() {
+    if (pendingFile) URL.revokeObjectURL(pendingFile.previewUrl)
+    setPendingFile(null)
+  }
 
-    const res = await fetch(`/api/posts/${id}/media`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body, sort_order: media.length }),
-    })
-    if (res.ok) {
-      const newMedia = await res.json()
-      setMedia(prev => [...prev, newMedia])
-      setPost(prev => prev ? { ...prev, media: [...(prev.media ?? []), newMedia] } : prev)
+  async function saveTextSlide() {
+    if (!textSlideEditor || !textSlideEditor.body.trim()) return
+    setSavingSlide(true)
+
+    if (textSlideEditor.mode === 'add') {
+      const res = await fetch(`/api/posts/${id}/media`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: textSlideEditor.body, sort_order: media.length }),
+      })
+      if (res.ok) {
+        const newMedia = await res.json()
+        setMedia(prev => [...prev, newMedia])
+        setPost(prev => prev ? { ...prev, media: [...(prev.media ?? []), newMedia] } : prev)
+      }
+    } else if (textSlideEditor.mediaId) {
+      const res = await fetch(`/api/posts/${id}/media`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ media_id: textSlideEditor.mediaId, body: textSlideEditor.body }),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setMedia(prev => prev.map(m => m.id === updated.id ? updated : m))
+        setPost(prev => prev ? { ...prev, media: (prev.media ?? []).map(m => m.id === updated.id ? updated : m) } : prev)
+      }
     }
-    setUploading(false)
+    setTextSlideEditor(null)
+    setSavingSlide(false)
+  }
+
+  function handleDragStart(e: React.DragEvent, index: number) {
+    setDragIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  function handleDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault()
+    setDragOverIndex(index)
+  }
+
+  function handleDragEnd() {
+    if (dragIndex === null || dragOverIndex === null || dragIndex === dragOverIndex) {
+      setDragIndex(null)
+      setDragOverIndex(null)
+      return
+    }
+
+    const sorted = [...media].sort((a, b) => a.sort_order - b.sort_order)
+    const [moved] = sorted.splice(dragIndex, 1)
+    sorted.splice(dragOverIndex, 0, moved)
+
+    const updated = sorted.map((item, i) => ({ ...item, sort_order: i }))
+    const prevMedia = media
+    setMedia(updated)
+    setPost(prev => prev ? { ...prev, media: updated } : prev)
+
+    Promise.all(
+      updated
+        .filter(item => item.sort_order !== prevMedia.find(m => m.id === item.id)?.sort_order)
+        .map(item =>
+          fetch(`/api/posts/${id}/media`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ media_id: item.id, sort_order: item.sort_order }),
+          })
+        )
+    ).catch(() => {
+      setMedia(prevMedia)
+      setPost(prev => prev ? { ...prev, media: prevMedia } : prev)
+    })
+
+    setDragIndex(null)
+    setDragOverIndex(null)
   }
 
   async function handleDeleteMedia(mediaId: string) {
@@ -125,16 +216,61 @@ export default function TradeDetailPage() {
 
           <TradeCard post={post} />
 
-          {/* Media manager (own post) */}
+          {/* Your Explanation (own post) */}
           {isOwn && (
             <div className="mt-4 bg-white border border-gray-200 rounded-2xl p-4">
-              <h2 className="font-semibold text-gray-900 text-sm mb-3">Media</h2>
+              <h2 className="font-semibold text-gray-900 text-sm mb-1">Your Explanation</h2>
+              <p className="text-gray-400 text-xs mb-4">Add your reasoning, screenshots, or notes. The trade data above is verified and can&apos;t be changed.</p>
 
-              {/* Existing media */}
+              {/* Empty state */}
+              {!analysis && !savedAnalysis && media.length === 0 && !textSlideEditor && !pendingFile && (
+                <div className="text-center py-6 mb-3">
+                  <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <FileText size={20} className="text-indigo-400" />
+                  </div>
+                  <p className="text-gray-900 font-medium text-sm">Tell others about this trade</p>
+                  <p className="text-gray-400 text-xs mt-1">Add analysis, screenshots, or text slides to explain your thinking</p>
+                </div>
+              )}
+
+              {/* Analysis textarea (always visible) */}
+              <div className="mb-3">
+                <textarea
+                  value={analysis}
+                  onChange={e => setAnalysis(e.target.value)}
+                  rows={4}
+                  placeholder="Why did you take this trade? What did you see?"
+                  className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                />
+                {analysis !== savedAnalysis && (
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={saveAnalysis} disabled={savingAnalysis} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
+                      {savingAnalysis ? 'Saving...' : 'Save'}
+                    </button>
+                    <button onClick={() => setAnalysis(savedAnalysis)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50">
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Media grid with drag-to-reorder */}
               {media.length > 0 && (
                 <div className="grid grid-cols-3 gap-2 mb-3">
-                  {media.sort((a, b) => a.sort_order - b.sort_order).map(item => (
-                    <div key={item.id} className="relative group">
+                  {[...media].sort((a, b) => a.sort_order - b.sort_order).map((item, index) => (
+                    <div
+                      key={item.id}
+                      className={`relative group cursor-grab active:cursor-grabbing ${dragOverIndex === index ? 'ring-2 ring-indigo-400 rounded-lg' : ''}`}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      {/* Drag handle */}
+                      <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-70 text-white z-10 drop-shadow">
+                        <GripVertical size={14} />
+                      </div>
+
                       {item.type === 'image' && item.url && (
                         <img src={item.url} alt="" className="w-full aspect-square object-cover rounded-lg" />
                       )}
@@ -146,6 +282,18 @@ export default function TradeDetailPage() {
                           {item.body?.slice(0, 60)}...
                         </div>
                       )}
+
+                      {/* Edit button for text slides */}
+                      {item.type === 'text' && (
+                        <button
+                          onClick={() => setTextSlideEditor({ mode: 'edit', mediaId: item.id, body: item.body ?? '' })}
+                          className="absolute bottom-1 left-1 bg-white/90 text-gray-700 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                      )}
+
+                      {/* Delete button */}
                       <button
                         onClick={() => handleDeleteMedia(item.id)}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -157,67 +305,74 @@ export default function TradeDetailPage() {
                 </div>
               )}
 
-              {/* Upload buttons */}
-              <div className="flex gap-2">
+              {/* File preview before upload */}
+              {pendingFile && (
+                <div className="border border-indigo-200 rounded-xl p-3 bg-indigo-50/30 mb-3">
+                  {pendingFile.type === 'image' ? (
+                    <img src={pendingFile.previewUrl} alt="Preview" className="max-h-48 rounded-lg object-contain mx-auto" />
+                  ) : (
+                    <video src={pendingFile.previewUrl} className="max-h-48 rounded-lg mx-auto" controls />
+                  )}
+                  <p className="text-xs text-gray-500 mt-2 text-center">{pendingFile.file.name} ({(pendingFile.file.size / 1024 / 1024).toFixed(1)} MB)</p>
+                  <div className="flex justify-end gap-2 mt-2">
+                    <button onClick={cancelFileUpload} className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50">
+                      Cancel
+                    </button>
+                    <button onClick={confirmFileUpload} disabled={uploading} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
+                      {uploading ? 'Uploading...' : 'Upload'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Inline text slide editor */}
+              {textSlideEditor && (
+                <div className="border border-indigo-200 rounded-xl p-3 bg-indigo-50/30 mb-3">
+                  <textarea
+                    value={textSlideEditor.body}
+                    onChange={e => setTextSlideEditor(prev => prev ? { ...prev, body: e.target.value } : prev)}
+                    rows={4}
+                    placeholder="Write your text slide content..."
+                    className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    autoFocus
+                  />
+                  <div className="flex justify-end gap-2 mt-2">
+                    <button onClick={() => setTextSlideEditor(null)} className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50">
+                      Cancel
+                    </button>
+                    <button onClick={saveTextSlide} disabled={savingSlide || !textSlideEditor.body.trim()} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
+                      {savingSlide ? 'Saving...' : textSlideEditor.mode === 'add' ? 'Add Slide' : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Add content buttons */}
+              <div className="flex gap-2 pt-3 border-t border-gray-100">
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*,video/*"
-                  onChange={handleFileUpload}
+                  onChange={handleFileSelect}
                   className="hidden"
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
+                  disabled={uploading || !!pendingFile}
                   className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                 >
                   <ImagePlus size={16} />
-                  {uploading ? 'Uploading...' : 'Add Image/Video'}
+                  Add Image/Video
                 </button>
                 <button
-                  onClick={handleAddTextSlide}
-                  disabled={uploading}
+                  onClick={() => setTextSlideEditor({ mode: 'add', body: '' })}
+                  disabled={!!textSlideEditor}
                   className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                 >
-                  <FileText size={16} />
-                  Add Text
+                  <Type size={16} />
+                  Add Text Slide
                 </button>
               </div>
-            </div>
-          )}
-
-          {/* Analysis editor (own post) */}
-          {isOwn && (
-            <div className="mt-4 bg-white border border-gray-200 rounded-2xl p-4">
-              <div className="flex justify-between items-center mb-2">
-                <h2 className="font-semibold text-gray-900 text-sm">Your analysis</h2>
-                {!editingAnalysis && (
-                  <button onClick={() => setEditingAnalysis(true)} className="text-indigo-600 text-sm hover:underline">
-                    {post.analysis ? 'Edit' : 'Add analysis'}
-                  </button>
-                )}
-              </div>
-              {editingAnalysis ? (
-                <div>
-                  <textarea
-                    value={analysis}
-                    onChange={e => setAnalysis(e.target.value)}
-                    rows={5}
-                    placeholder="Why did you take this trade? What did you see?"
-                    className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-                  />
-                  <div className="flex gap-2 mt-2">
-                    <button onClick={saveAnalysis} disabled={savingAnalysis} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
-                      {savingAnalysis ? 'Saving...' : 'Save'}
-                    </button>
-                    <button onClick={() => { setEditingAnalysis(false); setAnalysis(post.analysis ?? '') }} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50">
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                !post.analysis && <p className="text-gray-400 text-sm">No analysis yet. Share your thinking.</p>
-              )}
             </div>
           )}
 

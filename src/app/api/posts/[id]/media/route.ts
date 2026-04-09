@@ -82,6 +82,49 @@ export async function POST(
   return NextResponse.json(media)
 }
 
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: postId } = await params
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { media_id, body, sort_order } = await req.json()
+  if (!media_id) return NextResponse.json({ error: 'media_id required' }, { status: 400 })
+
+  // Verify ownership via post
+  const { data: post } = await supabase
+    .from('posts')
+    .select('user_id')
+    .eq('id', postId)
+    .single()
+
+  if (!post || post.user_id !== user.id) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  const updates: Record<string, unknown> = {}
+  if (body !== undefined) updates.body = body
+  if (sort_order !== undefined) updates.sort_order = sort_order
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
+  }
+
+  const { data: media, error } = await supabase
+    .from('post_media')
+    .update(updates)
+    .eq('id', media_id)
+    .eq('post_id', postId)
+    .select()
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(media)
+}
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
